@@ -1,19 +1,59 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { chatSocketServer } from "../services/socket";
 
-const defaultEmojis = ['😀','😂','🥰','😍','🤔','👍','❤️','🎉','🔥','💯','✨','🙌','👏','🚀','💪','🎯'];
-const defaultStickers = ['🎨','🎭','🎪','🎬','🎸','🎮','⚽','🏀','🎳','🎯','🎲','🧩'];
+const defaultEmojis = [
+  "😀",
+  "😂",
+  "🥰",
+  "😍",
+  "🤔",
+  "👍",
+  "❤️",
+  "🎉",
+  "🔥",
+  "💯",
+  "✨",
+  "🙌",
+  "👏",
+  "🚀",
+  "💪",
+  "🎯",
+];
+const defaultStickers = [
+  "🎨",
+  "🎭",
+  "🎪",
+  "🎬",
+  "🎸",
+  "🎮",
+  "⚽",
+  "🏀",
+  "🎳",
+  "🎯",
+  "🎲",
+  "🧩",
+];
 
-export default function useChatLogic({ activeChat: initialActive, setActiveChat, initialContacts }) {
+export default function useChatLogic({
+  activeChat: initialActive,
+  setActiveChat,
+  initialContacts,
+}) {
   const [activeChat, _setActiveChat] = useState(initialActive);
 
   const [messages, setMessages] = useState([
-    { id: 1, text: 'Chào bạn! 👋', sender: 'other', time: '10:00' },
-    { id: 2, text: 'Dự án tiến triển như thế nào rồi?', sender: 'other', time: '10:00' },
-    { id: 3, text: 'Đang làm tốt lắm!', sender: 'user', time: '10:05' },
+    { id: 1, text: "Chào bạn! 👋", sender: "other", time: "10:00" },
+    {
+      id: 2,
+      text: "Dự án tiến triển như thế nào rồi?",
+      sender: "other",
+      time: "10:00",
+    },
+    { id: 3, text: "Đang làm tốt lắm!", sender: "user", time: "10:05" },
   ]);
 
-  const [input, setInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [input, setInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
@@ -22,43 +62,84 @@ export default function useChatLogic({ activeChat: initialActive, setActiveChat,
 
   // Auto scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const getTimeNow = () => {
     const now = new Date();
-    return `${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
+    return `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`;
   };
 
-  const sendMessage = useCallback((payload) => {
-    const msg = { id: messages.length + 1, time: getTimeNow(), ...payload };
-    setMessages(prev => [...prev, msg]);
-    scrollToBottom();
+  const sendMessage = useCallback(
+    (payload) => {
+      const msg = { id: messages.length + 1, time: getTimeNow(), ...payload };
+      setMessages((prev) => [...prev, msg]);
+      scrollToBottom();
 
-    // Simple bot reply
-    if (payload.sender === 'user') {
-      setTimeout(() => {
-        setMessages(prev => [
-          ...prev, 
-          { 
-            id: prev.length + 1, 
-            text: 'Cảm ơn bạn đã nhắn tin! 😊', 
-            sender: 'other', 
-            time: getTimeNow() 
-          }
-        ]);
-      }, 800);
-    }
-  }, [messages.length]);
+      // Simple bot reply
+      if (payload.sender === "user") {
+        setTimeout(() => {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: prev.length + 1,
+              text: "Cảm ơn bạn đã nhắn tin! 😊",
+              sender: "other",
+              time: getTimeNow(),
+            },
+          ]);
+        }, 800);
+      }
+    },
+    [messages.length]
+  );
+
+  // Dựa vào activeChat để quyết định gửi kiểu room hay people
+  const getSendTarget = () => {
+    if (!activeChat) return null;
+
+    const isGroup = activeChat.type === "group";
+
+    return {
+      wsType: isGroup ? "room" : "people",
+      to: activeChat.name,
+    };
+  };
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    sendMessage({ text: input, sender: 'user' });
-    setInput('');
+    if (!input.trim() || !activeChat) return;
+
+    const text = input.trim();
+
+    const target = getSendTarget();
+    if (!target) return;
+
+    const { wsType, to } = target;
+
+    chatSocketServer.send("SEND_CHAT", {
+      type: wsType,
+      to: to, 
+      mes: text, 
+    });
+
+    const newMessage = {
+      id: Date.now(), 
+      text, 
+      sender: "user", 
+      time: new Date().toLocaleTimeString("vi-VN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      type: "text",
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+
+    setInput("");
   };
 
   const handleChatSelect = (contact) => {
@@ -68,9 +149,9 @@ export default function useChatLogic({ activeChat: initialActive, setActiveChat,
   };
 
   // Toggles
-  const toggleEmojiPicker = () => setShowEmojiPicker(v => !v);
-  const toggleStickerPicker = () => setShowStickerPicker(v => !v);
-  const toggleGroupMenu = () => setShowGroupMenu(v => !v);
+  const toggleEmojiPicker = () => setShowEmojiPicker((v) => !v);
+  const toggleStickerPicker = () => setShowStickerPicker((v) => !v);
+  const toggleGroupMenu = () => setShowGroupMenu((v) => !v);
 
   // FINAL RETURN OBJECT
   return {
