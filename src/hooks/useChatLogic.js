@@ -100,4 +100,3 @@ export default function useChatLogic({ activeChat: initialActive, setActiveChat,
     stickers: defaultStickers,
   };
 }
-
