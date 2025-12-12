@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { createRoom, setShowCreateModal } from '../../redux/slices/roomSlice';
+import { createRoom, setShowCreateModal } from '../../redux/slices/listUserSlice.js';
 
 export default function CreateRoomModal() {
     const dispatch = useDispatch();
-    const { loading } = useSelector(state => state.room);
-    const [roomName, setName] = useState('');
+    const { loading } = useSelector(state => state.listUser);
+    const [roomName, setRoomName] = useState('');
 
     const handleCreate = () => {
         if (!roomName.trim()) {
@@ -26,8 +26,8 @@ export default function CreateRoomModal() {
                 <input
                     type="text"
                     placeholder="Tên Nhóm"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
+                    value={roomName}
+                    onChange={e => setRoomName(e.target.value)}
                     className="w-full border px-3 py-2 rounded mb-4 focus:outline-none focus:ring focus:border-blue-300"
                 />
                 <div className="flex justify-end gap-3">
