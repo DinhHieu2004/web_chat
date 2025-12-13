@@ -48,7 +48,7 @@ export default function App() {
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-gray-100 p-2">
             {/* ------------------- Sidebar (Danh sách liên hệ) ------------------- */}
             <Sidebar
                 contacts={contacts}
