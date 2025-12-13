@@ -4,7 +4,6 @@ import { chatSocketServer } from "../services/socket";
 export default function useChatLogic({
   activeChat,
   setActiveChat,
-  initialContacts,
   currentUser,
 }) {
   const [messagesMap, setMessagesMap] = useState({});
@@ -15,8 +14,12 @@ export default function useChatLogic({
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
 
-  const makeChatKeyFromActive = (chat) =>
-    chat ? `${chat.type}:${chat.name}` : null;
+  const makeChatKeyFromActive = (chat) => {
+    if (!chat) return null;
+    if (chat.type === "room") return `group:${chat.name}`;
+    if (chat.type === "people") return `user:${chat.name}`;
+    return null;
+  };
 
   const makeChatKeyFromWs = ({ type, from, to }) => {
     if (type === "room") return `group:${to}`;
@@ -68,7 +71,91 @@ export default function useChatLogic({
     };
 
     chatSocketServer.on("SEND_CHAT", onIncoming);
-    return () => chatSocketServer.off("SEND_CHAT", onIncoming);
+    const onHistory = (payload) => {
+      const status = payload?.status;
+      const event = payload?.event;
+      const data = payload?.data;
+
+      if (status !== "success") return;
+
+      if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
+        const otherUser = data[0]
+          ? data[0].name === currentUser
+            ? data[0].to
+            : data[0].name
+          : null;
+
+        const key = otherUser ? `user:${otherUser}` : null;
+        if (!key) return;
+
+        const mapped = data
+          .slice()
+          .reverse()
+          .map((m) => ({
+            id: m.id ?? Date.now() + Math.random(),
+            text: m.mes ?? "",
+            sender: m.name === currentUser ? "user" : "other",
+            time: m.createAt
+              ? m.createAt.slice(11, 16)
+              : new Date().toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+            type: "text",
+            from: m.name,
+            to: m.to,
+          }));
+
+        setMessagesMap((prev) => ({
+          ...prev,
+          [key]: mapped,
+        }));
+
+        return;
+      }
+
+      if (
+        event === "GET_ROOM_CHAT_MES" &&
+        data?.chatData &&
+        Array.isArray(data.chatData)
+      ) {
+        const roomName = data.name;
+        const key = roomName ? `group:${roomName}` : null;
+        if (!key) return;
+
+        const mapped = data.chatData
+          .slice()
+          .reverse()
+          .map((m) => ({
+            id: m.id ?? Date.now() + Math.random(),
+            text: m.mes ?? "",
+            sender: m.name === currentUser ? "user" : "other",
+            time: m.createAt
+              ? m.createAt.slice(11, 16)
+              : new Date().toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+            type: "text",
+            from: m.name,
+            to: m.to,
+          }));
+
+        setMessagesMap((prev) => ({
+          ...prev,
+          [key]: mapped,
+        }));
+      }
+    };
+
+    chatSocketServer.on("GET_ROOM_CHAT_MES", onHistory);
+    chatSocketServer.on("GET_PEOPLE_CHAT_MES", onHistory);
+
+    return () => {
+      chatSocketServer.off("SEND_CHAT", onIncoming);
+      chatSocketServer.off("GET_ROOM_CHAT_MES", onHistory);
+      chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
+    };
   }, [currentUser]);
 
   const handleSend = () => {
@@ -79,9 +166,9 @@ export default function useChatLogic({
 
     let wsType;
 
-    if (activeChat.type === "group") {
+    if (activeChat.type === "room") {
       wsType = "room";
-    } else if (activeChat.type === "user") {
+    } else if (activeChat.type === "people") {
       wsType = "people";
     } else {
       console.warn("Unknown chat type:", activeChat.type);
@@ -96,7 +183,7 @@ export default function useChatLogic({
       mes: text,
     });
 
-    const key = makeChatKeyFromActive(activeChat);
+    const key = chatKey;
     if (!key) return;
 
     setMessagesMap((prev) => {
@@ -122,15 +209,31 @@ export default function useChatLogic({
     setInput("");
   };
 
-  const handleChatSelect = (contact) => {
-    const normalized =
-      contact.type === "room"
-        ? { ...contact, type: "group" }
-        : contact.type === "people"
-        ? { ...contact, type: "user" }
-        : contact;
+  const loadHistory = (page = 1, chat = activeChat) => {
+    if (!chat) return;
 
-    setActiveChat(normalized);
+    if (chat.type === "room") {
+      chatSocketServer.send("GET_ROOM_CHAT_MES", {
+        name: chat.name,
+        page,
+      });
+    } else if (chat.type === "people") {
+      chatSocketServer.send("GET_PEOPLE_CHAT_MES", {
+        name: chat.name,
+        page,
+      });
+    }
+  };
+
+  const handleChatSelect = (contact) => {
+    setActiveChat(contact);
+
+    if (contact.type === "room") {
+      chatSocketServer.send("JOIN_ROOM", { name: contact.name });
+    }
+
+    loadHistory(1, contact);
+
     setShowEmojiPicker(false);
     setShowStickerPicker(false);
     setShowGroupMenu(false);
@@ -163,6 +266,7 @@ export default function useChatLogic({
     handlers: {
       handleSend,
       handleChatSelect,
+      loadHistory,
       handleFileUpload,
       handleVoiceMessage,
     },
