@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {useSelector, useDispatch} from 'react-redux';
 import SidebarSearch from './SidebarSearch';
 import ContactItem from './ContactItem';
@@ -8,7 +8,11 @@ import CreateRoomModal from '../room/CreateRoomModal';
 export default function Sidebar({searchTerm, setSearchTerm}) {
     const dispatch = useDispatch();
     const {list, activeChatId, showCreateModal} = useSelector(state => state.listUser);
+    const bootedRef = useRef(false);
+
     useEffect(() => {
+        if (bootedRef.current) return;
+        bootedRef.current = true;
         dispatch(getList());
     }, [dispatch]);
 

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { initSocket, reLoginUser } from './redux/slices/authSlice';
+import { initSocket, reLoginUser, logout   } from './redux/slices/authSlice';
 import AuthForm from './components/auth/AuthForm';
 
 import Sidebar from './components/sidebar/Sidebar';
@@ -13,19 +13,28 @@ export default function App() {
     
     const { isAuthenticated, status } = useSelector((state) => state.auth);
     const isLoading = status === 'loading';
+    const bootedRef = useRef(false);
 
     useEffect(() => {
-        dispatch(initSocket());
+        if (bootedRef.current) return;
+        bootedRef.current = true;
+        const boot = async () => {
+            await dispatch(initSocket());
 
-        const storedUser = localStorage.getItem('user');
-        const storedCode = localStorage.getItem('reLoginCode');
+            const user = localStorage.getItem('user');
+            const code = localStorage.getItem('reLoginCode');
 
-        if (storedUser && storedCode && !isAuthenticated) {
-            console.log('Found stored credentials, attempting RE_LOGIN...');
-            dispatch(reLoginUser({ user: storedUser, code: storedCode }));
-        }
-    }, [dispatch, isAuthenticated]);
+            if (user && code) {
+                dispatch(reLoginUser({ user, code }));
+            }
+        };
 
+        void  boot();
+    }, [dispatch]);
+
+    const handleLogout = () => {
+        dispatch(logout());
+    };
  
     const [contacts] = useState(initialContacts);
     const [activeChat, setActiveChat] = useState(contacts[0]);
@@ -58,20 +67,31 @@ export default function App() {
                 setSearchTerm={chat.setSearchTerm}
             />
             {/* ------------------- Chat Area (Cửa sổ chat) ------------------- */}
-            <ChatArea
-                activeChat={chat.activeChat}
-                messages={chat.messages}
-                input={chat.input}
-                setInput={chat.setInput}
-                handlers={chat.handlers}
-                messagesEndRef={chat.messagesEndRef}
-                showEmojiPicker={chat.showEmojiPicker}
-                showStickerPicker={chat.showStickerPicker}
-                toggleEmojiPicker={chat.toggleEmojiPicker}
-                toggleStickerPicker={chat.toggleStickerPicker}
-                showGroupMenu={chat.showGroupMenu}
-                toggleGroupMenu={chat.toggleGroupMenu}
-            />
+            <div className="flex flex-col flex-1">
+                <div className="flex justify-end p-2">
+                    <button
+                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                        onClick={handleLogout}
+                    >
+                        Logout
+                    </button>
+                </div>
+
+                <ChatArea
+                    activeChat={chat.activeChat}
+                    messages={chat.messages}
+                    input={chat.input}
+                    setInput={chat.setInput}
+                    handlers={chat.handlers}
+                    messagesEndRef={chat.messagesEndRef}
+                    showEmojiPicker={chat.showEmojiPicker}
+                    showStickerPicker={chat.showStickerPicker}
+                    toggleEmojiPicker={chat.toggleEmojiPicker}
+                    toggleStickerPicker={chat.toggleStickerPicker}
+                    showGroupMenu={chat.showGroupMenu}
+                    toggleGroupMenu={chat.toggleGroupMenu}
+                />
+            </div>
         </div>
     );
 }

@@ -1,19 +1,26 @@
 import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import {chatSocketServer} from '../../services/socket';
 
-const createSocketPromise = (action, payload, errorEvent = 'ERROR') => {
+const createSocketPromise = (action, payload, successEvent, errorEvent = 'ERROR') => {
     return new Promise((resolve, reject) => {
-        const handler = (response) => {
-            chatSocketServer.off(action, handler);
-            chatSocketServer.off(errorEvent, handler);
-
-            if (response.status === 'success') resolve(response.data);
-            else reject(response.data || 'Unknown error');
+        const successHandler = (response) => {
+            chatSocketServer.off(successEvent, successHandler);
+            chatSocketServer.off(errorEvent, errorHandler);
+            resolve(response.data);
         };
 
-        chatSocketServer.on(action, handler);
-        chatSocketServer.on(errorEvent, handler);
+        const errorHandler = (response) => {
+            chatSocketServer.off(successEvent, successHandler);
+            chatSocketServer.off(errorEvent, errorHandler);
+            reject(response.data);
+        };
+
+        chatSocketServer.on(successEvent, successHandler);
+        chatSocketServer.on(errorEvent, errorHandler);
+
         chatSocketServer.send(action, payload);
+
+
     });
 };
 
@@ -21,7 +28,7 @@ export const getList = createAsyncThunk('chat/getList',
     async (_, {
         rejectWithValue}) => {
     try {
-        const response = await createSocketPromise('GET_USER_LIST', {});
+        const response = await createSocketPromise('GET_USER_LIST', {}, 'GET_USER_LIST');
         return response;
     } catch (err) {
         return rejectWithValue(err || 'Get list failed');
@@ -31,7 +38,7 @@ export const getList = createAsyncThunk('chat/getList',
 export const createRoom = createAsyncThunk('chat/createRoom',
     async ({name}, {rejectWithValue}) => {
     try {
-        const response = await createSocketPromise('CREATE_ROOM', {name});
+        const response = await createSocketPromise('CREATE_ROOM', {name}, 'CREATE_ROOM');
         return response;
     } catch (err) {
         return rejectWithValue(err || 'Create room failed');
@@ -40,7 +47,7 @@ export const createRoom = createAsyncThunk('chat/createRoom',
 
 export const joinRoom = createAsyncThunk('chat/joinRoom', async ({name}, {rejectWithValue}) => {
     try {
-        const response = await createSocketPromise('JOIN_ROOM', {name});
+        const response = await createSocketPromise('JOIN_ROOM', {name}, 'JOIN_ROOM');
         return response;
     } catch (err) {
         return rejectWithValue(err || 'Join room failed');

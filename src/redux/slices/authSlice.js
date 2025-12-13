@@ -59,12 +59,21 @@ export const reLoginUser = createAsyncThunk(
     'auth/reLogin',
     async ({ user, code }, { rejectWithValue }) => {
         try {
-          
-            chatSocketServer.send('RE_LOGIN', { user, code });
-            return { user };
+
+            const responseData= await createSocketPromise('RE_LOGIN', { user, code }, 'RE_LOGIN');
+            return {
+                user,
+                code: responseData.RE_LOGIN_CODE
+            };
         } catch (error) {
             return rejectWithValue(error);
         }
+    }
+);
+export const initSocket = createAsyncThunk(
+    'auth/initSocket',
+    async () => {
+        await chatSocketServer.connect();
     }
 );
 
@@ -83,10 +92,9 @@ const authSlice = createSlice({
             state.isAuthenticated = false;
             state.user = null;
             state.reLoginCode = null;
-            chatSocketServer.send('LOGOUT', {}); 
-        },
-        initSocket: () => {
-             chatSocketServer.connect();
+            localStorage.removeItem('user');
+            localStorage.removeItem('reLoginCode');
+            chatSocketServer.send('LOGOUT', {});
         },
     },
     extraReducers: (builder) => {
@@ -125,10 +133,13 @@ const authSlice = createSlice({
                  state.status = 'succeeded';
                  state.isAuthenticated = true;
                  state.user = action.payload.user;
+                 state.reLoginCode = action.payload.code;
+                 localStorage.setItem('user', action.payload.user);
+                 localStorage.setItem('reLoginCode', action.payload.code);
             });
     },
 });
 
-export const { logout, initSocket } = authSlice.actions;
+export const { logout} = authSlice.actions;
 
 export default authSlice.reducer;
