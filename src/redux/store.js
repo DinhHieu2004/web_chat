@@ -1,11 +1,12 @@
 // src/redux/store.js
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
+import listUReducer from './slices/listUserSlice.js';
 
 export const store = configureStore({
     reducer: {
         auth: authReducer,
-        // Thêm các reducers khác (ví dụ: chat, users) ở đây
+        listUser: listUReducer,
     },
     // Middleware để cho phép Redux xử lý các đối tượng không thể serializable như WebSocket object
     // Mặc dù ta đã tách socket ra khỏi state, việc này vẫn nên làm.
