@@ -1,5 +1,4 @@
 const SOCKET_URL = "wss://chat.longapp.site/chat/chat";
-
 const HEARTBEAT_INTERVAL = 60000;
 const HEARTBEAT_ACTION = "GET_USER_LIST";
 
@@ -8,69 +7,81 @@ class ChatSocketServer {
     this.socket = null;
     this.listeners = {};
     this.heartbeatInterval = null;
+
+    this.connPromise = null;
+
     this.queue = [];
   }
 
   connect() {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      console.log("socket connected");
-      return;
+      return Promise.resolve();
     }
 
-    this.socket = new WebSocket(SOCKET_URL);
+    if (this.connPromise) return this.connPromise;
 
-    this.socket.onopen = () => {
-      console.log("WebSocket connected");
-      this.startHeartbeat();
+    this.connPromise = new Promise((resolve) => {
+      this.socket = new WebSocket(SOCKET_URL);
 
-      if (this.queue.length > 0) {
-        const pending = [...this.queue];
-        this.queue = [];
+      this.socket.onopen = () => {
+        console.log("WebSocket connected");
+        this.startHeartbeat();
+        this.flushQueue();
+        this.connPromise = null;
+        resolve();
+      };
 
-        pending.forEach((payload) => {
-          try {
-            this.socket.send(JSON.stringify(payload));
-          } catch (err) {
-            console.error("[WS] Flush queue failed:", err);
-            this.queue.unshift(payload);
+      this.socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data?.event && this.listeners[data.event]) {
+            this.listeners[data.event].forEach((cb) => cb(data));
           }
-        });
-      }
-    };
-
-    this.socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log("received:", data);
-
-        if (data && data.event && this.listeners[data.event]) {
-          this.listeners[data.event].forEach((callback) => callback(data));
+        } catch (e) {
+          console.error("Failed to parse JSON message:", e, event.data);
         }
-      } catch (e) {
-        console.error("Failed to parse JSON message:", e, event.data);
-      }
-    };
+      };
 
-    this.socket.onclose = () => {
-      console.warn("Webdocket disconnnected");
-      this.stopHeartbeat();
-      setTimeout(() => {
-        this.connect();
-      }, 3000);
-    };
+      this.socket.onclose = () => {
+        console.warn("WebSocket disconnected");
+        this.stopHeartbeat();
+        this.socket = null;
+        this.connPromise = null;
 
-    this.socket.onerror = (error) => {
-      console.error("WebSocket Error:", error);
-    };
+        setTimeout(() => this.connect(), 3000);
+      };
+
+      this.socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+    });
+
+    return this.connPromise;
   }
 
-  // --- LOGIC HEARTBEAT ---
+  flushQueue() {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+    if (this.queue.length === 0) return;
+
+    const pending = [...this.queue];
+    this.queue = [];
+
+    pending.forEach((payload) => {
+      try {
+        this.socket.send(JSON.stringify(payload));
+      } catch (err) {
+        console.error("[WS] Flush queue failed:", err);
+        this.queue.unshift(payload);
+      }
+    });
+  }
+
   startHeartbeat() {
     this.stopHeartbeat();
 
     this.heartbeatInterval = setInterval(() => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        // Gửi action GET_USER_LIST để giữ kết nối
         this.send(HEARTBEAT_ACTION, {});
       } else {
         this.stopHeartbeat();
@@ -85,17 +96,19 @@ class ChatSocketServer {
     }
   }
 
-  send(action, data = {}) {
+  send(event, data = {}) {
     const payload = {
       action: "onchat",
       data: {
-        event: action,
+        event,
         data,
       },
     };
 
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      console.warn("[WS] Not open. Queue payload:", payload);
+      if (event !== HEARTBEAT_ACTION) {
+        console.warn("[WS] Not open. Queue payload:", payload);
+      }
       this.queue.push(payload);
 
       if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
@@ -112,7 +125,6 @@ class ChatSocketServer {
     }
   }
 
-  // register callback
   on(event, callback) {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
@@ -120,12 +132,25 @@ class ChatSocketServer {
     this.listeners[event].push(callback);
   }
 
-  // cacel callback
   off(event, callback) {
-    if (this.listeners[event]) {
-      this.listeners[event] = this.listeners[event].filter(
-        (cb) => cb !== callback
-      );
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter(
+      (cb) => cb !== callback
+    );
+  }
+
+  close() {
+    this.stopHeartbeat();
+    this.queue = [];
+    this.connPromise = null;
+
+    if (this.socket) {
+      try {
+        this.socket.close();
+      } catch (err) {
+        console.warn("Socket close error:", err);
+      }
+      this.socket = null;
     }
   }
 }

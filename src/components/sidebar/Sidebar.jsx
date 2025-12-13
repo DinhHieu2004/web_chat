@@ -9,11 +9,7 @@ import {
 } from "../../redux/slices/listUserSlice";
 import CreateRoomModal from "../room/CreateRoomModal";
 
-export default function Sidebar({
-  searchTerm,
-  setSearchTerm,
-  onSelectContact,
-}) {
+export default function Sidebar({ searchTerm, setSearchTerm, onSelectContact }) {
   const dispatch = useDispatch();
   const { list, activeChatId, showCreateModal } = useSelector(
     (state) => state.listUser
@@ -27,7 +23,7 @@ export default function Sidebar({
   }, [dispatch, isAuthenticated]);
 
   const filtered = list.filter((c) =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (c.name || "").toLowerCase().includes((searchTerm || "").toLowerCase())
   );
 
   const handleSelect = (item) => {
@@ -60,7 +56,9 @@ export default function Sidebar({
           />
         ))}
       </div>
+
       {showCreateModal && <CreateRoomModal />}
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { initSocket, reLoginUser } from "./redux/slices/authSlice";
+import { initSocket, reLoginUser, logout } from "./redux/slices/authSlice";
 import { setActiveChat as setActiveChatId } from "./redux/slices/listUserSlice";
 import AuthForm from "./components/auth/AuthForm";
 
@@ -13,25 +13,32 @@ export default function App() {
 
   const { isAuthenticated, status, user } = useSelector((state) => state.auth);
   const { list, activeChatId } = useSelector((state) => state.listUser);
+
+  const isLoading = status === "loading";
+
   const activeChat = list.find((c) => c.name === activeChatId) || null;
+
   const setActiveChat = (contact) => {
     dispatch(setActiveChatId(contact.name));
   };
-  const isLoading = status === "loading";
+
+  const handleLogout = () => {
+    dispatch(logout());
+  };
 
   useEffect(() => {
     dispatch(initSocket());
+  }, [dispatch]);
 
+  useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedCode = localStorage.getItem("reLoginCode");
 
     if (storedUser && storedCode && !isAuthenticated) {
-      console.log("Found stored credentials, attempting RE_LOGIN...");
       dispatch(reLoginUser({ user: storedUser, code: storedCode }));
     }
   }, [dispatch, isAuthenticated]);
 
-  // Hook xử lý logic chat
   const chat = useChatLogic({
     activeChat,
     setActiveChat,
@@ -61,7 +68,6 @@ export default function App() {
     if (isLoading) {
       return (
         <div className="flex justify-center items-center h-screen bg-gray-200 text-lg font-semibold">
-          {}
           Đang kết nối / Đăng nhập lại...
         </div>
       );
@@ -77,20 +83,32 @@ export default function App() {
         setSearchTerm={chat.setSearchTerm}
         onSelectContact={chat.handlers.handleChatSelect}
       />
-      <ChatArea
-        activeChat={chat.activeChat}
-        messages={chat.messages}
-        input={chat.input}
-        setInput={chat.setInput}
-        handlers={chat.handlers}
-        messagesEndRef={chat.messagesEndRef}
-        showEmojiPicker={chat.showEmojiPicker}
-        showStickerPicker={chat.showStickerPicker}
-        toggleEmojiPicker={chat.toggleEmojiPicker}
-        toggleStickerPicker={chat.toggleStickerPicker}
-        showGroupMenu={chat.showGroupMenu}
-        toggleGroupMenu={chat.toggleGroupMenu}
-      />
+
+      <div className="flex flex-col flex-1">
+        <div className="flex justify-end p-2">
+          <button
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
+
+        <ChatArea
+          activeChat={activeChat}
+          messages={chat.messages}
+          input={chat.input}
+          setInput={chat.setInput}
+          handlers={chat.handlers}
+          messagesEndRef={chat.messagesEndRef}
+          showEmojiPicker={chat.showEmojiPicker}
+          showStickerPicker={chat.showStickerPicker}
+          toggleEmojiPicker={chat.toggleEmojiPicker}
+          toggleStickerPicker={chat.toggleStickerPicker}
+          showGroupMenu={chat.showGroupMenu}
+          toggleGroupMenu={chat.toggleGroupMenu}
+        />
+      </div>
     </div>
   );
 }

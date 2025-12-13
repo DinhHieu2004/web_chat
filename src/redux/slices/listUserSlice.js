@@ -1,19 +1,19 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { chatSocketServer } from "../../services/socket";
 
-const createSocketPromise = (action, payload, errorEvent = "ERROR") => {
+const createSocketPromise = (event, payload, errorEvent = "ERROR") => {
   return new Promise((resolve, reject) => {
     const handler = (response) => {
-      chatSocketServer.off(action, handler);
+      chatSocketServer.off(event, handler);
       chatSocketServer.off(errorEvent, handler);
 
-      if (response.status === "success") resolve(response.data);
-      else reject(response.data || "Unknown error");
+      if (response?.status === "success") resolve(response.data);
+      else reject(response?.data || "Unknown error");
     };
 
-    chatSocketServer.on(action, handler);
+    chatSocketServer.on(event, handler);
     chatSocketServer.on(errorEvent, handler);
-    chatSocketServer.send(action, payload);
+    chatSocketServer.send(event, payload);
   });
 };
 
@@ -117,7 +117,7 @@ const listUserSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      
+
       .addCase(joinRoom.fulfilled, (state, action) => {
         state.loading = false;
         const room = { ...action.payload, type: "room" };
