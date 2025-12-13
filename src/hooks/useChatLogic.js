@@ -1,56 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 
-const defaultEmojis = [
-  "😀",
-  "😂",
-  "🥰",
-  "😍",
-  "🤔",
-  "👍",
-  "❤️",
-  "🎉",
-  "🔥",
-  "💯",
-  "✨",
-  "🙌",
-  "👏",
-  "🚀",
-  "💪",
-  "🎯",
-];
-const defaultStickers = [
-  "🎨",
-  "🎭",
-  "🎪",
-  "🎬",
-  "🎸",
-  "🎮",
-  "⚽",
-  "🏀",
-  "🎳",
-  "🎯",
-  "🎲",
-  "🧩",
-];
-
 export default function useChatLogic({
-  activeChat: initialActive,
+  activeChat,        
   setActiveChat,
   initialContacts,
 }) {
-  const [activeChat, _setActiveChat] = useState(initialActive);
-
-  const [messages, setMessages] = useState([
-    { id: 1, text: "Chào bạn! 👋", sender: "other", time: "10:00" },
-    {
-      id: 2,
-      text: "Dự án tiến triển như thế nào rồi?",
-      sender: "other",
-      time: "10:00",
-    },
-    { id: 3, text: "Đang làm tốt lắm!", sender: "user", time: "10:05" },
-  ]);
+  const [messagesMap, setMessagesMap] = useState({});
 
   const [input, setInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,101 +15,106 @@ export default function useChatLogic({
   const [showGroupMenu, setShowGroupMenu] = useState(false);
 
   const messagesEndRef = useRef(null);
+  const chatKey = activeChat
+    ? `${activeChat.type}:${activeChat.name}`
+    : null;
 
-  // Auto scroll
+  const messages = chatKey ? messagesMap[chatKey] || [] : [];
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  useEffect(() => {
+    const onIncoming = (payload) => {
+      const d = payload?.data?.data || payload?.data || {};
+      const { type, from, to, mes } = d;
 
-  const getTimeNow = () => {
-    const now = new Date();
-    return `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`;
-  };
+      if (!mes) return;
 
-  const sendMessage = useCallback(
-    (payload) => {
-      const msg = { id: messages.length + 1, time: getTimeNow(), ...payload };
-      setMessages((prev) => [...prev, msg]);
-      scrollToBottom();
+      const incomingKey =
+        type === "room" ? `group:${to}` : `user:${from}`;
 
-      // Simple bot reply
-      if (payload.sender === "user") {
-        setTimeout(() => {
-          setMessages((prev) => [
-            ...prev,
+      if (!incomingKey) return;
+
+      setMessagesMap((prev) => {
+        const prevMsgs = prev[incomingKey] || [];
+        return {
+          ...prev,
+          [incomingKey]: [
+            ...prevMsgs,
             {
-              id: prev.length + 1,
-              text: "Cảm ơn bạn đã nhắn tin! 😊",
+              id: Date.now(),
+              text: mes,
               sender: "other",
-              time: getTimeNow(),
+              time: new Date().toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              type: "text",
+              from,
             },
-          ]);
-        }, 800);
-      }
-    },
-    [messages.length]
-  );
-
-  // Dựa vào activeChat để quyết định gửi kiểu room hay people
-  const getSendTarget = () => {
-    if (!activeChat) return null;
-
-    const isGroup = activeChat.type === "group";
-
-    return {
-      wsType: isGroup ? "room" : "people",
-      to: activeChat.name,
+          ],
+        };
+      });
     };
-  };
+
+    chatSocketServer.on("SEND_CHAT", onIncoming);
+    return () => chatSocketServer.off("SEND_CHAT", onIncoming);
+  }, []);
 
   const handleSend = () => {
     if (!input.trim() || !activeChat) return;
 
     const text = input.trim();
-
-    const target = getSendTarget();
-    if (!target) return;
-
-    const { wsType, to } = target;
+    const wsType = activeChat.type === "group" ? "room" : "people";
+    const to = activeChat.name;
 
     chatSocketServer.send("SEND_CHAT", {
       type: wsType,
-      to: to, 
-      mes: text, 
+      to,
+      mes: text,
     });
 
-    const newMessage = {
-      id: Date.now(), 
-      text, 
-      sender: "user", 
-      time: new Date().toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      type: "text",
-    };
+    const key = `${activeChat.type}:${activeChat.name}`;
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessagesMap((prev) => {
+      const prevMsgs = prev[key] || [];
+      return {
+        ...prev,
+        [key]: [
+          ...prevMsgs,
+          {
+            id: Date.now(),
+            text,
+            sender: "user",
+            time: new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            type: "text",
+          },
+        ],
+      };
+    });
 
     setInput("");
   };
 
   const handleChatSelect = (contact) => {
-    setActiveChat(contact);
-    _setActiveChat(contact);
-    setMessages([]); // reset messages for new chat
+    setActiveChat(contact);      
+    setShowEmojiPicker(false);    
+    setShowStickerPicker(false);
+    setShowGroupMenu(false);
   };
 
-  // Toggles
+  const handleFileUpload = () => {};
+  const handleVoiceMessage = () => {};
+
   const toggleEmojiPicker = () => setShowEmojiPicker((v) => !v);
   const toggleStickerPicker = () => setShowStickerPicker((v) => !v);
   const toggleGroupMenu = () => setShowGroupMenu((v) => !v);
 
-  // FINAL RETURN OBJECT
   return {
     activeChat,
     messages,
@@ -174,10 +135,8 @@ export default function useChatLogic({
     handlers: {
       handleSend,
       handleChatSelect,
-      sendMessage,
+      handleFileUpload,
+      handleVoiceMessage,
     },
-
-    emojis: defaultEmojis,
-    stickers: defaultStickers,
   };
 }
