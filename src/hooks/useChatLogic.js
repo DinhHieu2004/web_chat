@@ -1,78 +1,251 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from "react";
+import { chatSocketServer } from "../services/socket";
 
-const defaultEmojis = ['😀','😂','🥰','😍','🤔','👍','❤️','🎉','🔥','💯','✨','🙌','👏','🚀','💪','🎯'];
-const defaultStickers = ['🎨','🎭','🎪','🎬','🎸','🎮','⚽','🏀','🎳','🎯','🎲','🧩'];
+export default function useChatLogic({
+  activeChat,
+  setActiveChat,
+  currentUser,
+}) {
+  const [messagesMap, setMessagesMap] = useState({});
 
-export default function useChatLogic({ activeChat: initialActive, setActiveChat, initialContacts }) {
-  const [activeChat, _setActiveChat] = useState(initialActive);
-
-  const [messages, setMessages] = useState([
-    { id: 1, text: 'Chào bạn! 👋', sender: 'other', time: '10:00' },
-    { id: 2, text: 'Dự án tiến triển như thế nào rồi?', sender: 'other', time: '10:00' },
-    { id: 3, text: 'Đang làm tốt lắm!', sender: 'user', time: '10:05' },
-  ]);
-
-  const [input, setInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [input, setInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
 
-  const messagesEndRef = useRef(null);
+  const makeChatKeyFromActive = (chat) => {
+    if (!chat) return null;
+    if (chat.type === "room") return `group:${chat.name}`;
+    if (chat.type === "people") return `user:${chat.name}`;
+    return null;
+  };
 
-  // Auto scroll
+  const makeChatKeyFromWs = ({ type, from, to }) => {
+    if (type === "room") return `group:${to}`;
+
+    const other = from === currentUser ? to : from;
+    return other ? `user:${other}` : null;
+  };
+
+  const messagesEndRef = useRef(null);
+  const chatKey = makeChatKeyFromActive(activeChat);
+
+  const messages = chatKey ? messagesMap[chatKey] || [] : [];
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  useEffect(() => {
+    const onIncoming = (payload) => {
+      const d = payload?.data?.data || payload?.data || {};
+      const { type, from, to, mes } = d;
 
-  const getTimeNow = () => {
-    const now = new Date();
-    return `${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
-  };
+      if (!mes) return;
 
-  const sendMessage = useCallback((payload) => {
-    const msg = { id: messages.length + 1, time: getTimeNow(), ...payload };
-    setMessages(prev => [...prev, msg]);
-    scrollToBottom();
+      const incomingKey = makeChatKeyFromWs({ type, from, to });
 
-    // Simple bot reply
-    if (payload.sender === 'user') {
-      setTimeout(() => {
-        setMessages(prev => [
-          ...prev, 
-          { 
-            id: prev.length + 1, 
-            text: 'Cảm ơn bạn đã nhắn tin! 😊', 
-            sender: 'other', 
-            time: getTimeNow() 
-          }
-        ]);
-      }, 800);
-    }
-  }, [messages.length]);
+      if (!incomingKey) return;
+
+      setMessagesMap((prev) => {
+        const prevMsgs = prev[incomingKey] || [];
+        return {
+          ...prev,
+          [incomingKey]: [
+            ...prevMsgs,
+            {
+              id: Date.now() + Math.random(),
+              text: mes,
+              sender: from === currentUser ? "user" : "other",
+              time: new Date().toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              type: "text",
+              from,
+            },
+          ],
+        };
+      });
+    };
+
+    chatSocketServer.on("SEND_CHAT", onIncoming);
+    const onHistory = (payload) => {
+      const status = payload?.status;
+      const event = payload?.event;
+      const data = payload?.data;
+
+      if (status !== "success") return;
+
+      if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
+        const otherUser = data[0]
+          ? data[0].name === currentUser
+            ? data[0].to
+            : data[0].name
+          : null;
+
+        const key = otherUser ? `user:${otherUser}` : null;
+        if (!key) return;
+
+        const mapped = data
+          .slice()
+          .reverse()
+          .map((m) => ({
+            id: m.id ?? Date.now() + Math.random(),
+            text: m.mes ?? "",
+            sender: m.name === currentUser ? "user" : "other",
+            time: m.createAt
+              ? m.createAt.slice(11, 16)
+              : new Date().toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+            type: "text",
+            from: m.name,
+            to: m.to,
+          }));
+
+        setMessagesMap((prev) => ({
+          ...prev,
+          [key]: mapped,
+        }));
+
+        return;
+      }
+
+      if (
+        event === "GET_ROOM_CHAT_MES" &&
+        data?.chatData &&
+        Array.isArray(data.chatData)
+      ) {
+        const roomName = data.name;
+        const key = roomName ? `group:${roomName}` : null;
+        if (!key) return;
+
+        const mapped = data.chatData
+          .slice()
+          .reverse()
+          .map((m) => ({
+            id: m.id ?? Date.now() + Math.random(),
+            text: m.mes ?? "",
+            sender: m.name === currentUser ? "user" : "other",
+            time: m.createAt
+              ? m.createAt.slice(11, 16)
+              : new Date().toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+            type: "text",
+            from: m.name,
+            to: m.to,
+          }));
+
+        setMessagesMap((prev) => ({
+          ...prev,
+          [key]: mapped,
+        }));
+      }
+    };
+
+    chatSocketServer.on("GET_ROOM_CHAT_MES", onHistory);
+    chatSocketServer.on("GET_PEOPLE_CHAT_MES", onHistory);
+
+    return () => {
+      chatSocketServer.off("SEND_CHAT", onIncoming);
+      chatSocketServer.off("GET_ROOM_CHAT_MES", onHistory);
+      chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
+    };
+  }, [currentUser]);
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    sendMessage({ text: input, sender: 'user' });
-    setInput('');
+    if (!activeChat) return;
+
+    const text = input.trim();
+    if (!text) return;
+
+    let wsType;
+
+    if (activeChat.type === "room") {
+      wsType = "room";
+    } else if (activeChat.type === "people") {
+      wsType = "people";
+    } else {
+      console.warn("Unknown chat type:", activeChat.type);
+      return;
+    }
+
+    const to = activeChat.name;
+
+    chatSocketServer.send("SEND_CHAT", {
+      type: wsType,
+      to,
+      mes: text,
+    });
+
+    const key = chatKey;
+    if (!key) return;
+
+    setMessagesMap((prev) => {
+      const prevMsgs = prev[key] || [];
+      return {
+        ...prev,
+        [key]: [
+          ...prevMsgs,
+          {
+            id: Date.now() + Math.random(),
+            text,
+            sender: "user",
+            time: new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            type: "text",
+          },
+        ],
+      };
+    });
+
+    setInput("");
+  };
+
+  const loadHistory = (page = 1, chat = activeChat) => {
+    if (!chat) return;
+
+    if (chat.type === "room") {
+      chatSocketServer.send("GET_ROOM_CHAT_MES", {
+        name: chat.name,
+        page,
+      });
+    } else if (chat.type === "people") {
+      chatSocketServer.send("GET_PEOPLE_CHAT_MES", {
+        name: chat.name,
+        page,
+      });
+    }
   };
 
   const handleChatSelect = (contact) => {
     setActiveChat(contact);
-    _setActiveChat(contact);
-    setMessages([]); // reset messages for new chat
+
+    if (contact.type === "room") {
+      chatSocketServer.send("JOIN_ROOM", { name: contact.name });
+    }
+
+    loadHistory(1, contact);
+
+    setShowEmojiPicker(false);
+    setShowStickerPicker(false);
+    setShowGroupMenu(false);
   };
 
-  // Toggles
-  const toggleEmojiPicker = () => setShowEmojiPicker(v => !v);
-  const toggleStickerPicker = () => setShowStickerPicker(v => !v);
-  const toggleGroupMenu = () => setShowGroupMenu(v => !v);
+  const handleFileUpload = () => {};
+  const handleVoiceMessage = () => {};
 
-  // FINAL RETURN OBJECT
+  const toggleEmojiPicker = () => setShowEmojiPicker((v) => !v);
+  const toggleStickerPicker = () => setShowStickerPicker((v) => !v);
+  const toggleGroupMenu = () => setShowGroupMenu((v) => !v);
+
   return {
     activeChat,
     messages,
@@ -93,10 +266,9 @@ export default function useChatLogic({ activeChat: initialActive, setActiveChat,
     handlers: {
       handleSend,
       handleChatSelect,
-      sendMessage,
+      loadHistory,
+      handleFileUpload,
+      handleVoiceMessage,
     },
-
-    emojis: defaultEmojis,
-    stickers: defaultStickers,
   };
 }
