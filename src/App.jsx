@@ -11,7 +11,7 @@ import useChatLogic from './hooks/useChatLogic';
 export default function App() {
     const dispatch = useDispatch();
     
-    const { isAuthenticated, status } = useSelector((state) => state.auth);
+    const { isAuthenticated, status, user } = useSelector((state) => state.auth);
     const isLoading = status === 'loading';
 
     useEffect(() => {
@@ -31,7 +31,7 @@ export default function App() {
     const [activeChat, setActiveChat] = useState(contacts[0]);
 
     // Hook xử lý logic chat
-    const chat = useChatLogic({ activeChat, setActiveChat, initialContacts: contacts });
+    const chat = useChatLogic({ activeChat, setActiveChat, initialContacts: contacts, currentUser: user});
 
 
     if (isLoading || !isAuthenticated) {

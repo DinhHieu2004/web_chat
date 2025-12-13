@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 
 export default function useChatLogic({
-  activeChat,        
+  activeChat,
   setActiveChat,
   initialContacts,
+  currentUser,
 }) {
   const [messagesMap, setMessagesMap] = useState({});
 
@@ -14,10 +15,18 @@ export default function useChatLogic({
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
 
+  const makeChatKeyFromActive = (chat) =>
+    chat ? `${chat.type}:${chat.name}` : null;
+
+  const makeChatKeyFromWs = ({ type, from, to }) => {
+    if (type === "room") return `group:${to}`;
+
+    const other = from === currentUser ? to : from;
+    return other ? `user:${other}` : null;
+  };
+
   const messagesEndRef = useRef(null);
-  const chatKey = activeChat
-    ? `${activeChat.type}:${activeChat.name}`
-    : null;
+  const chatKey = makeChatKeyFromActive(activeChat);
 
   const messages = chatKey ? messagesMap[chatKey] || [] : [];
 
@@ -32,8 +41,7 @@ export default function useChatLogic({
 
       if (!mes) return;
 
-      const incomingKey =
-        type === "room" ? `group:${to}` : `user:${from}`;
+      const incomingKey = makeChatKeyFromWs({ type, from, to });
 
       if (!incomingKey) return;
 
@@ -44,9 +52,9 @@ export default function useChatLogic({
           [incomingKey]: [
             ...prevMsgs,
             {
-              id: Date.now(),
+              id: Date.now() + Math.random(),
               text: mes,
-              sender: "other",
+              sender: from === currentUser ? "user" : "other",
               time: new Date().toLocaleTimeString("vi-VN", {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -61,13 +69,25 @@ export default function useChatLogic({
 
     chatSocketServer.on("SEND_CHAT", onIncoming);
     return () => chatSocketServer.off("SEND_CHAT", onIncoming);
-  }, []);
+  }, [currentUser]);
 
   const handleSend = () => {
-    if (!input.trim() || !activeChat) return;
+    if (!activeChat) return;
 
     const text = input.trim();
-    const wsType = activeChat.type === "group" ? "room" : "people";
+    if (!text) return;
+
+    let wsType;
+
+    if (activeChat.type === "group") {
+      wsType = "room";
+    } else if (activeChat.type === "user") {
+      wsType = "people";
+    } else {
+      console.warn("Unknown chat type:", activeChat.type);
+      return;
+    }
+
     const to = activeChat.name;
 
     chatSocketServer.send("SEND_CHAT", {
@@ -76,7 +96,8 @@ export default function useChatLogic({
       mes: text,
     });
 
-    const key = `${activeChat.type}:${activeChat.name}`;
+    const key = makeChatKeyFromActive(activeChat);
+    if (!key) return;
 
     setMessagesMap((prev) => {
       const prevMsgs = prev[key] || [];
@@ -85,7 +106,7 @@ export default function useChatLogic({
         [key]: [
           ...prevMsgs,
           {
-            id: Date.now(),
+            id: Date.now() + Math.random(),
             text,
             sender: "user",
             time: new Date().toLocaleTimeString("vi-VN", {
@@ -102,8 +123,15 @@ export default function useChatLogic({
   };
 
   const handleChatSelect = (contact) => {
-    setActiveChat(contact);      
-    setShowEmojiPicker(false);    
+    const normalized =
+      contact.type === "room"
+        ? { ...contact, type: "group" }
+        : contact.type === "people"
+        ? { ...contact, type: "user" }
+        : contact;
+
+    setActiveChat(normalized);
+    setShowEmojiPicker(false);
     setShowStickerPicker(false);
     setShowGroupMenu(false);
   };
