@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 
-export default function useChatLogic({activeChat, setActiveChat, currentUser,}) {
+export default function useChatLogic({
+  activeChat,
+  setActiveChat,
+  currentUser,
+}) {
   const [messagesMap, setMessagesMap] = useState({});
 
   const [input, setInput] = useState("");
@@ -17,8 +21,20 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
     return null;
   };
 
+  const formatVNDateTime = (isoLike) => {
+    const d = isoLike ? new Date(isoLike) : new Date();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const DD = String(d.getDate()).padStart(2, "0");
+    const MM = String(d.getMonth() + 1).padStart(2, "0");
+    const YYYY = d.getFullYear();
+    return `${hh}:${mm} ${DD}-${MM}-${YYYY}`;
+  };
+
   const makeChatKeyFromWs = ({ type, from, to }) => {
-    if (type === "room") return `group:${to}`;
+    const isRoom = type === "room" || type === 1;
+
+    if (isRoom) return to ? `group:${to}` : null;
 
     const other = from === currentUser ? to : from;
     return other ? `user:${other}` : null;
@@ -35,8 +51,10 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
 
   useEffect(() => {
     const onIncoming = (payload) => {
-      const d = payload?.data?.data || payload?.data || {};
-      const { type, from, to, mes } = d;
+      const d = payload?.data?.data || payload?.data || payload || {};
+      const { type, to, mes } = d;
+
+      const from = d.from ?? d.name;
 
       if (!mes) return;
 
@@ -46,6 +64,7 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
 
       setMessagesMap((prev) => {
         const prevMsgs = prev[incomingKey] || [];
+        if (from === currentUser) return prev;
         return {
           ...prev,
           [incomingKey]: [
@@ -53,11 +72,8 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
             {
               id: Date.now() + Math.random(),
               text: mes,
-              sender: from === currentUser ? "user" : "other",
-              time: new Date().toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
+              sender: "other",
+              time: formatVNDateTime(),
               type: "text",
               from,
             },
@@ -91,12 +107,7 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
             id: m.id ?? Date.now() + Math.random(),
             text: m.mes ?? "",
             sender: m.name === currentUser ? "user" : "other",
-            time: m.createAt
-              ? m.createAt.slice(11, 16)
-              : new Date().toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
+            time: formatVNDateTime(m.createAt),
             type: "text",
             from: m.name,
             to: m.to,
@@ -126,12 +137,7 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
             id: m.id ?? Date.now() + Math.random(),
             text: m.mes ?? "",
             sender: m.name === currentUser ? "user" : "other",
-            time: m.createAt
-              ? m.createAt.slice(11, 16)
-              : new Date().toLocaleTimeString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
+            time: formatVNDateTime(m.createAt),
             type: "text",
             from: m.name,
             to: m.to,
@@ -161,7 +167,6 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
     if (!text) return;
 
     let wsType;
-
     if (activeChat.type === "room") {
       wsType = "room";
     } else if (activeChat.type === "people") {
@@ -172,6 +177,7 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
     }
 
     const to = activeChat.name;
+    const now = formatVNDateTime();
 
     chatSocketServer.send("SEND_CHAT", {
       type: wsType,
@@ -184,19 +190,20 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
 
     setMessagesMap((prev) => {
       const prevMsgs = prev[key] || [];
+
       return {
         ...prev,
         [key]: [
           ...prevMsgs,
           {
-            id: Date.now() + Math.random(),
+            id: `local-${Date.now()}`, 
             text,
             sender: "user",
-            time: new Date().toLocaleTimeString("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            time: now,
             type: "text",
+            from: currentUser, 
+            to,
+            optimistic: true, 
           },
         ],
       };

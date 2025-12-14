@@ -80,14 +80,14 @@ export default function App() {
     }
 
     return (
-        <div className="flex h-screen bg-gray-100 p-2">
+        <div className="flex h-screen bg-gray-100 p-2 overflow-hidden">
             <Sidebar
                 searchTerm={chat.searchTerm}
                 setSearchTerm={chat.setSearchTerm}
                 onSelectContact={chat.handlers.handleChatSelect}
             />
 
-            <div className="flex flex-col flex-1">
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
                 <div className="flex justify-end p-2">
                     <button
                         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"

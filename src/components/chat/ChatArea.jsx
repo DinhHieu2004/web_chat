@@ -6,9 +6,9 @@ import ChatInput from './ChatInput';
 
 export default function ChatArea({ activeChat, messages, input, setInput, handlers, messagesEndRef, ...rest }) {
 return (
-<div className="flex-1 flex flex-col">
+<div className="flex-1 min-h-0 flex flex-col">
 <ChatHeader activeChat={activeChat} />
-<MessageList messages={messages} messagesEndRef={messagesEndRef} />
+<MessageList messages={messages} messagesEndRef={messagesEndRef} activeChat={activeChat} />
 <ChatInput input={input} setInput={setInput} handlers={handlers} {...rest} />
 </div>
 );
