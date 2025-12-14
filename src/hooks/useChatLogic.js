@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 
-export default function useChatLogic({activeChat, setActiveChat, currentUser,}) {
+export default function useChatLogic({
+  activeChat,
+  setActiveChat,
+  currentUser,
+}) {
   const [messagesMap, setMessagesMap] = useState({});
 
   const [input, setInput] = useState("");
@@ -18,7 +22,9 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
   };
 
   const makeChatKeyFromWs = ({ type, from, to }) => {
-    if (type === "room") return `group:${to}`;
+    const isRoom = type === "room" || type === 1;
+
+    if (isRoom) return to ? `group:${to}` : null;
 
     const other = from === currentUser ? to : from;
     return other ? `user:${other}` : null;
@@ -35,8 +41,10 @@ export default function useChatLogic({activeChat, setActiveChat, currentUser,}) 
 
   useEffect(() => {
     const onIncoming = (payload) => {
-      const d = payload?.data?.data || payload?.data || {};
-      const { type, from, to, mes } = d;
+      const d = payload?.data?.data || payload?.data || payload || {};
+      const { type, to, mes } = d;
+
+      const from = d.from ?? d.name;
 
       if (!mes) return;
 
