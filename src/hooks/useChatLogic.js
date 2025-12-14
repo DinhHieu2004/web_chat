@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 
-export default function useChatLogic({
-  activeChat,
-  setActiveChat,
-  currentUser,
-}) {
+export default function useChatLogic({activeChat, setActiveChat, currentUser,}) {
   const [messagesMap, setMessagesMap] = useState({});
 
   const [input, setInput] = useState("");
@@ -227,10 +223,6 @@ export default function useChatLogic({
 
   const handleChatSelect = (contact) => {
     setActiveChat(contact);
-
-    if (contact.type === "room") {
-      chatSocketServer.send("JOIN_ROOM", { name: contact.name });
-    }
 
     loadHistory(1, contact);
 
