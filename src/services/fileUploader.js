@@ -1,3 +1,4 @@
+
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const s3 = new S3Client({
@@ -13,21 +14,26 @@ const BUCKET = import.meta.env.VITE_S3_BUCKET;
 export const uploadFileToS3 = async (file) => {
     if (!file) return null;
 
-    const key = `uploads/${Date.now()}-${file.name}`;
+    const safeName = encodeURIComponent(file.name);
+    const key = `uploads/${Date.now()}-${safeName}`;
 
     try {
+        const fileContent = await file.arrayBuffer();
+
         await s3.send(
             new PutObjectCommand({
                 Bucket: BUCKET,
                 Key: key,
-                Body: file,
-                ContentType: file.type || 'application/octet-stream',
+                Body: fileContent,
+                ContentType: file.type || "application/octet-stream",
             })
         );
-        return `https://${BUCKET}.s3.${import.meta.env.VITE_AWS_REGION}.amazonaws.com/${key}`;
+        console.log(`https://${BUCKET}.s3.${import.meta.env.VITE_AWS_REGION}.amazonaws.com/${key}`)
 
+        return `https://${BUCKET}.s3.${import.meta.env.VITE_AWS_REGION}.amazonaws.com/${key}`;
     } catch (err) {
-        console.error('Upload S3 lỗi:', err);
+        console.error("Upload S3 lỗi:", err);
         return null;
     }
-}
+};
+

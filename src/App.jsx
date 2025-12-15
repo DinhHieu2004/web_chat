@@ -6,7 +6,9 @@ import AuthForm from "./components/auth/AuthForm";
 
 import Sidebar from "./components/sidebar/Sidebar";
 import ChatArea from "./components/chat/ChatArea";
-import useChatLogic from "./hooks/useChatLogic";
+//import useChatLogic from "./hooks/useChatLogic";
+import useChatLogic from "./hooks/useChatLogic2";
+
 
 export default function App() {
     const dispatch = useDispatch();
