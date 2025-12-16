@@ -32,7 +32,7 @@ export const uploadFileToS3 = async (file) => {
 
         return `https://${BUCKET}.s3.${import.meta.env.VITE_AWS_REGION}.amazonaws.com/${key}`;
     } catch (err) {
-        console.error("Upload S3 lỗi:", err);
+        console.error("Upload S3 error:", err);
         return null;
     }
 };

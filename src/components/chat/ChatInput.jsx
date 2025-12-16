@@ -46,15 +46,14 @@ export default function ChatInput({
     };
 
     const handleSendWithFile = () => {
-        if (selectedFile) {
-            handleFileUpload(selectedFile);
-            setSelectedFile(null);
-            setPreviewUrl(null);
-        }
-        if (input.trim()) {
-            handleSend();
-        }
-    };
+    if (selectedFile) {
+        handleFileUpload(selectedFile);
+        setSelectedFile(null);
+        setPreviewUrl(null);
+    } else if (input.trim()) {
+        handleSend();
+    }
+};
 
     return (
         <div className="bg-white border-t border-gray-200">
