@@ -3,19 +3,25 @@ import { chatSocketServer } from "../../services/socket";
 
 const createSocketPromise = (event, payload, errorEvent = "ERROR") => {
   return new Promise((resolve, reject) => {
-    const handler = (response) => {
-      chatSocketServer.off(event, handler);
-      chatSocketServer.off(errorEvent, handler);
+    chatSocketServer
+      .connect()
+      .then(() => {
+        const handler = (response) => {
+          chatSocketServer.off(event, handler);
+          chatSocketServer.off(errorEvent, handler);
 
-      if (response?.status === "success") resolve(response.data);
-      else reject(response?.data || "Unknown error");
-    };
+          if (response?.status === "success") resolve(response.data);
+          else reject(response?.data || "Unknown error");
+        };
 
-    chatSocketServer.on(event, handler);
-    chatSocketServer.on(errorEvent, handler);
-    chatSocketServer.send(event, payload);
+        chatSocketServer.on(event, handler);
+        chatSocketServer.on(errorEvent, handler);
+        chatSocketServer.send(event, payload);
+      })
+      .catch(reject);
   });
 };
+
 
 export const initSocket = createAsyncThunk("auth/initSocket", async () => {
   await chatSocketServer.connect();
@@ -53,7 +59,10 @@ export const reLoginUser = createAsyncThunk(
   "auth/reLogin",
   async ({ user, code }, { rejectWithValue }) => {
     try {
-      const responseData = await createSocketPromise("RE_LOGIN", { user, code });
+      const responseData = await createSocketPromise("RE_LOGIN", {
+        user,
+        code,
+      });
 
       return {
         user,
@@ -84,6 +93,7 @@ const authSlice = createSlice({
       localStorage.removeItem("reLoginCode");
 
       chatSocketServer.send("LOGOUT", {});
+      chatSocketServer.setAuthed(false);
       chatSocketServer.close();
     },
   },
@@ -103,10 +113,12 @@ const authSlice = createSlice({
         if (action.payload.code) {
           localStorage.setItem("reLoginCode", action.payload.code);
         }
+        chatSocketServer.setAuthed(true);
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload || "Login failed";
+        chatSocketServer.setAuthed(false);
       })
 
       .addCase(registerUser.pending, (state) => {
@@ -138,10 +150,12 @@ const authSlice = createSlice({
         if (action.payload.code) {
           localStorage.setItem("reLoginCode", action.payload.code);
         }
+        chatSocketServer.setAuthed(true);
       })
       .addCase(reLoginUser.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload || "Re-login failed";
+        chatSocketServer.setAuthed(false);
       });
   },
 });
