@@ -74,7 +74,9 @@ export default function useChatLogic({
 
             const finalType = fileData?.type || "text";
             const finalUrl = fileData?.url || null;
-            const finalText = fileData?.text || mes;
+            const finalText = fileData ? fileData.text : mes
+
+            
             const finalFileName = fileData?.fileName || null;
 
             setMessagesMap((prev) => ({
@@ -104,7 +106,9 @@ export default function useChatLogic({
 
                 return {
                     id: m.id ?? Date.now() + Math.random(),
-                    text: fileData?.text || m.mes || "",
+                    text: fileData 
+                    ? fileData.text 
+                    : m.mes || "",
                     sender: m.name === currentUser ? "user" : "other",
                     time: formatVNDateTime(m.createAt),
                     type: fileData?.type || m.messageType || "text",
