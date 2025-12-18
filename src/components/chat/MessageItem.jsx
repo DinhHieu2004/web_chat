@@ -1,15 +1,9 @@
 import React from "react";
 import { FaUserCircle, FaFileAlt } from "react-icons/fa";
 
-/**
- * ================================
- * PARSE JSON PAYLOAD (FILE + CAPTION)
- * ================================
- */
 const tryParseCustomPayload = (text) => {
   if (!text || typeof text !== "string") return null;
 
-  // tránh parse text thường
   if (!text.startsWith("{")) return null;
 
   try {
@@ -17,10 +11,23 @@ const tryParseCustomPayload = (text) => {
 
     if (parsed && parsed.customType && parsed.url) {
       return {
-        type: parsed.customType, // image | video | audio | file
+        type: parsed.customType,
         url: parsed.url,
         text: parsed.text || "",
         fileName: parsed.fileName || null,
+      };
+    }
+
+    if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+      const emojiText = parsed.cps
+        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .join("");
+
+      return {
+        type: "emoji",
+        url: null,
+        text: emojiText,
+        fileName: null,
       };
     }
   } catch (e) {
@@ -33,25 +40,37 @@ const tryParseCustomPayload = (text) => {
 export default function MessageItem({ msg }) {
   const isMe = msg.sender === "user";
 
-  /**
-   * ================================
-   * CHUẨN HÓA DATA ĐỂ RENDER
-   * ================================
-   */
-
-  // nếu history trả về mes = JSON string
-  const parsedFromText =
-    msg.type === "text" ? tryParseCustomPayload(msg.text) : null;
+  const parsedFromText = tryParseCustomPayload(msg.text);
 
   const finalType = parsedFromText?.type || msg.type || "text";
   const finalUrl = parsedFromText?.url || msg.url || null;
   const finalText = parsedFromText?.text ?? msg.text ?? "";
   const finalFileName = parsedFromText?.fileName || msg.fileName || null;
 
-  
   const renderContent = () => (
     <div className="flex flex-col gap-2">
-      {/* IMAGE */}
+      {finalType === "emoji" && (
+        <div className="text-base leading-none">{finalText}</div>
+      )}
+
+      {finalType === "sticker" && finalUrl && (
+        <img
+          src={finalUrl}
+          alt="sticker"
+          className="w-28 h-28 object-contain"
+          onClick={() => window.open(finalUrl, "_blank")}
+        />
+      )}
+
+      {finalType === "gif" && finalUrl && (
+        <img
+          src={finalUrl}
+          alt="gif"
+          className="w-44 h-32 object-cover rounded-lg"
+          onClick={() => window.open(finalUrl, "_blank")}
+        />
+      )}
+
       {finalType === "image" && finalUrl && (
         <img
           src={finalUrl}
@@ -61,21 +80,18 @@ export default function MessageItem({ msg }) {
         />
       )}
 
-      {/* AUDIO */}
       {finalType === "audio" && finalUrl && (
         <audio controls className="max-w-xs">
           <source src={finalUrl} />
         </audio>
       )}
 
-      {/* VIDEO */}
       {finalType === "video" && finalUrl && (
         <video controls className="max-w-xs rounded-lg">
           <source src={finalUrl} />
         </video>
       )}
 
-      {/* FILE (PDF, ZIP, DOC...) */}
       {finalType === "file" && finalUrl && (
         <a
           href={finalUrl}
@@ -84,19 +100,17 @@ export default function MessageItem({ msg }) {
           className="flex items-center gap-2 text-sm underline"
         >
           <FaFileAlt />
-          {finalFileName  || "Tải file"}
+          {finalFileName || "Tải file"}
         </a>
       )}
 
-     
-      {finalText && finalText.trim() && (
+      {finalType !== "emoji" && finalText && finalText.trim() && (
         <p className="text-sm wrap-break-words whitespace-pre-wrap">
           {finalText}
         </p>
       )}
     </div>
   );
-
 
   return (
     <div className={`flex mb-4 ${isMe ? "justify-end" : "justify-start"}`}>
@@ -107,20 +121,20 @@ export default function MessageItem({ msg }) {
       )}
 
       <div className="max-w-[70%]">
-        {/* HEADER: NAME + TIME */}
         <div
-          className={`text-xs text-gray-500 mb-1 ${isMe ? "text-right" : "text-left"
-            }`}
+          className={`text-xs text-gray-500 mb-1 ${
+            isMe ? "text-right" : "text-left"
+          }`}
         >
           {isMe ? "Bạn" : msg.from} - {msg.time}
         </div>
 
-        {/* MESSAGE BUBBLE */}
         <div
-          className={`px-4 py-2 rounded-lg ${isMe
+          className={`px-4 py-2 rounded-lg ${
+            isMe
               ? "bg-linear-to-r from-purple-500 to-blue-500 text-white"
               : "bg-gray-100 text-gray-900"
-            }`}
+          }`}
         >
           {renderContent()}
         </div>

@@ -50,3 +50,49 @@ export const makeChatKeyFromWs = ({type, from, to, currentUser}) => {
     const otherUser = from === currentUser ? to : from;
     return otherUser ? `user:${otherUser}` : null;
 };
+
+export const parseCustomMessage = (mes) => {
+    if (!mes || typeof mes !== "string") return null;
+    if (!mes.startsWith("{")) return null;
+
+    try {
+        const parsed = JSON.parse(mes);
+
+        if (parsed?.customType && parsed?.url) {
+            return {
+                type: parsed.customType,
+                text: parsed.text || "",
+                url: parsed.url,
+                fileName: parsed.fileName || null,
+            };
+        }
+
+        if (parsed?.customType === "emoji" && Array.isArray(parsed.cps)) {
+            const text = parsed.cps
+                .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+                .join("");
+
+            return {
+                type: "emoji",
+                text,
+                url: null,
+                fileName: null,
+            };
+        }
+    } catch (e) {
+        return null;
+    }
+
+    return null;
+};
+
+export const buildEmojiMessage = (text) => {
+    const cps = Array.from(text).map((ch) =>
+        ch.codePointAt(0).toString(16).toUpperCase()
+    );
+
+    return JSON.stringify({
+        customType: "emoji",
+        cps,
+    });
+};
