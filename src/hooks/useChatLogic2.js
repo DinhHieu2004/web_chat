@@ -278,6 +278,61 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
     }
   };
 
+  const handleSendVoice = async (audioBlob) => {
+  if (!activeChat || !audioBlob) return;
+
+  setIsUploading(true);
+
+  try {
+    const fileName = `voice-${Date.now()}.webm`;
+
+    const audioFile = new File([audioBlob], fileName, {
+      type: audioBlob.type || "audio/webm",
+    });
+
+    const url = await uploadFileToS3(audioFile);
+    if (!url) return;
+
+    const payloadText = JSON.stringify({
+      customType: "audio",
+      url,
+      text: "",
+      fileName,
+    });
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: payloadText,
+      })
+    );
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [chatKey]: [
+        ...(prev[chatKey] || []),
+        {
+          id: `local-${Date.now()}`,
+          text: "",
+          sender: "user",
+          time: formatVNDateTime(),
+          type: "audio",
+          from: currentUser,
+          to: activeChat.name,
+          url,
+          fileName,
+          optimistic: true,
+        },
+      ],
+    }));
+  } finally {
+    setIsUploading(false);
+  }
+};
+
+
   const handleSendSticker = (sticker) => {
     if (!activeChat || !sticker?.url) return;
 
@@ -387,6 +442,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
     toggleStickerPicker: () => setShowStickerPicker((v) => !v),
     toggleGroupMenu: () => setShowGroupMenu((v) => !v),
     handlers: {
+      handleSendVoice,
       handleSend,
       handleChatSelect,
       loadHistory,
