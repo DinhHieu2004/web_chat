@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
-import { parseCustomMessage } from "../utils/chatDataFormatter";
-import { buildEmojiMessage } from "../utils/chatDataFormatter";
 import {
+  parseCustomMessage,
+  buildEmojiMessage,
   makeOutgoingPayload,
   makeChatKeyFromActive,
   formatVNDateTime,
@@ -47,11 +47,7 @@ const tryParseCustomPayload = (text) => {
 
 const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
-export default function useChatLogic({
-  activeChat,
-  setActiveChat,
-  currentUser,
-}) {
+export default function useChatLogic({ activeChat, setActiveChat, currentUser }) {
   const [messagesMap, setMessagesMap] = useState({});
   const [input, setInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +55,7 @@ export default function useChatLogic({
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
   const dispatch = useDispatch();
 
   const messagesEndRef = useRef(null);
@@ -173,13 +170,14 @@ export default function useChatLogic({
 
     const mesToSend = hasEmoji(text) ? buildEmojiMessage(text) : text;
 
-    const payload = makeOutgoingPayload({
-      type: activeChat.type,
-      to: activeChat.name,
-      mes: mesToSend,
-    });
-
-    chatSocketServer.send("SEND_CHAT", payload);
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: mesToSend,
+      })
+    );
 
     const optimisticType = hasEmoji(text) ? "emoji" : "text";
 
@@ -221,7 +219,7 @@ export default function useChatLogic({
       const url = await uploadFileToS3(file);
       if (!url) return;
 
-      const ext = file.name.split(".").pop().toLowerCase();
+      const ext = file.name.split(".").pop()?.toLowerCase();
       const type = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
         ? "image"
         : ["mp4", "webm"].includes(ext)
