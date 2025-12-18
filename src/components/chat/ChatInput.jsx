@@ -1,12 +1,11 @@
 import React, { useRef, useState, useEffect } from "react";
-import EmojiPickerPanel from "./EmojiPickerPanel";
+import ChatPickerPanel from "./ChatPickerPanel";
 
 import {
   FaPaperclip,
   FaSmile,
   FaImage,
   FaVideo,
-  FaMicrophone,
   FaPlus,
   FaChartBar,
   FaTimes,
@@ -17,9 +16,6 @@ export default function ChatInput({
   input,
   setInput,
   handlers,
-  showEmojiPicker,
-  toggleEmojiPicker,
-  toggleStickerPicker,
   toggleGroupMenu,
   isUploading,
 }) {
@@ -28,33 +24,40 @@ export default function ChatInput({
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  const emojiPanelRef = useRef(null);
-  const emojiBtnRef = useRef(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [activeTab, setActiveTab] = useState("STICKER");
+  const pickerPanelRef = useRef(null);
+  const pickerBtnRef = useRef(null);
+
+  const togglePicker = (tab) => {
+    setActiveTab(tab);
+    setShowPicker((prev) => !prev);
+  };
 
   useEffect(() => {
-    if (!showEmojiPicker) return;
+    if (!showPicker) return;
 
-    const onDown = (e) => {
-      const panel = emojiPanelRef.current;
-      const btn = emojiBtnRef.current;
-
-      if (panel?.contains(e.target)) return;
-      if (btn?.contains(e.target)) return;
-
-      toggleEmojiPicker?.();
+    const handleClickOutside = (e) => {
+      if (
+        pickerPanelRef.current?.contains(e.target) ||
+        pickerBtnRef.current?.contains(e.target)
+      ) {
+        return;
+      }
+      setShowPicker(false);
     };
 
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [showEmojiPicker, toggleEmojiPicker]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showPicker]);
 
+  // ===== Upload inputs =====
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const videoInputRef = useRef(null);
 
   const handleFileClick = () => fileInputRef.current?.click();
   const handleImageClick = () => imageInputRef.current?.click();
-  const handleVideoClick = () => videoInputRef.current?.click();
 
   const onFileSelect = (e) => {
     const file = e.target.files?.[0];
@@ -63,7 +66,7 @@ export default function ChatInput({
 
       if (file.type.startsWith("image/")) {
         const reader = new FileReader();
-        reader.onload = (e) => setPreviewUrl(e.target.result);
+        reader.onload = (ev) => setPreviewUrl(ev.target.result);
         reader.readAsDataURL(file);
       } else {
         setPreviewUrl(null);
@@ -141,6 +144,7 @@ export default function ChatInput({
               onClick={handleRemoveFile}
               className="p-1 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-red-500"
               title="Xóa file"
+              type="button"
             >
               <FaTimes size={16} />
             </button>
@@ -157,6 +161,7 @@ export default function ChatInput({
               className="p-2 hover:bg-gray-100 rounded-full transition-colors text-purple-500"
               title="Thêm"
               disabled={isUploading}
+              type="button"
             >
               <FaPlus size={18} />
             </button>
@@ -166,6 +171,7 @@ export default function ChatInput({
               className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
               title="Gửi file"
               disabled={isUploading}
+              type="button"
             >
               <FaPaperclip size={18} />
             </button>
@@ -175,23 +181,25 @@ export default function ChatInput({
               className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
               title="Gửi hình ảnh"
               disabled={isUploading}
+              type="button"
             >
               <FaImage size={18} />
             </button>
 
-            <button
-              onClick={toggleStickerPicker}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
-              title="Sticker"
-              disabled={isUploading}
-            >
-              <FaChartBar size={18} />
-            </button>
-
-            <div className="relative">
+            <div className="relative flex items-center gap-1">
               <button
-                ref={emojiBtnRef}
-                onClick={toggleEmojiPicker}
+                ref={pickerBtnRef}
+                onClick={() => togglePicker("STICKER")}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
+                title="Sticker"
+                disabled={isUploading}
+                type="button"
+              >
+                <FaChartBar size={18} />
+              </button>
+
+              <button
+                onClick={() => togglePicker("EMOJI")}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
                 title="Emoji"
                 disabled={isUploading}
@@ -200,30 +208,43 @@ export default function ChatInput({
                 <FaSmile size={18} />
               </button>
 
+              <button
+                onClick={() => togglePicker("GIF")}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
+                title="GIF"
+                disabled={isUploading}
+                type="button"
+              >
+                <FaVideo size={18} />
+              </button>
+
               <div className="absolute right-0 bottom-full mb-2 z-50">
-                <EmojiPickerPanel
-                  open={!!showEmojiPicker}
-                  panelRef={emojiPanelRef}
-                  onPick={(emoji) => setInput((prev) => (prev || "") + emoji)}
+                <ChatPickerPanel
+                  open={showPicker}
+                  panelRef={pickerPanelRef}
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  onPickEmoji={(emoji) => {
+                    setInput((prev) => (prev || "") + emoji);
+                  }}
+                  onPickSticker={(sticker) => {
+                    handlers.handleSendSticker?.(sticker);
+                    setShowPicker(false);
+                  }}
+                  onPickGif={(gif) => {
+                    handlers.handleSendGif?.(gif);
+                    setShowPicker(false);
+                  }}
                 />
               </div>
             </div>
-
-            <button
-              onClick={handleVideoClick}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
-              title="Gửi video/GIF"
-              disabled={isUploading}
-            >
-              <FaVideo size={18} />
-            </button>
           </div>
 
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 if (selectedFile) {
@@ -249,6 +270,7 @@ export default function ChatInput({
             disabled={isUploading || (!input.trim() && !selectedFile)}
             className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             title="Gửi"
+            type="button"
           >
             <FaPaperPlane size={18} />
           </button>

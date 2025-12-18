@@ -13,3 +13,10 @@ html, body, #root {
 .rounded-bl-none {
     border-bottom-left-radius: 0.5rem;
 }
+
+.EmojiPickerReact {
+  width: 100% !important;
+  height: 100% !important;
+  box-shadow: none !important;
+  border: none !important;
+}
