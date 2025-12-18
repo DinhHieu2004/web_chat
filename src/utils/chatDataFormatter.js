@@ -86,3 +86,13 @@ export const parseCustomMessage = (mes) => {
     return null;
 };
 
+export const buildEmojiMessage = (text) => {
+    const cps = Array.from(text).map((ch) =>
+        ch.codePointAt(0).toString(16).toUpperCase()
+    );
+
+    return JSON.stringify({
+        customType: "emoji",
+        cps,
+    });
+};

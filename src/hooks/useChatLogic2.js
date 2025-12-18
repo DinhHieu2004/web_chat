@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
 import { parseCustomMessage } from "../utils/chatDataFormatter";
+import { buildEmojiMessage } from "../utils/chatDataFormatter";
 import {
   makeOutgoingPayload,
   makeChatKeyFromActive,
@@ -45,17 +46,6 @@ const tryParseCustomPayload = (text) => {
 };
 
 const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
-
-const buildEmojiPayload = (text) => {
-  const cps = Array.from(text).map((ch) =>
-    ch.codePointAt(0).toString(16).toUpperCase()
-  );
-
-  return JSON.stringify({
-    customType: "emoji",
-    cps,
-  });
-};
 
 export default function useChatLogic({
   activeChat,
@@ -181,7 +171,7 @@ export default function useChatLogic({
     const text = input.trim();
     if (!text) return;
 
-    const mesToSend = hasEmoji(text) ? buildEmojiPayload(text) : text;
+    const mesToSend = hasEmoji(text) ? buildEmojiMessage(text) : text;
 
     const payload = makeOutgoingPayload({
       type: activeChat.type,
@@ -283,6 +273,82 @@ export default function useChatLogic({
     }
   };
 
+  const handleSendSticker = (sticker) => {
+    if (!activeChat || !sticker?.url) return;
+
+    const payloadText = JSON.stringify({
+      customType: "sticker",
+      stickerId: sticker.id,
+      url: sticker.url,
+      text: "",
+    });
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: payloadText,
+      })
+    );
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [chatKey]: [
+        ...(prev[chatKey] || []),
+        {
+          id: `local-${Date.now()}`,
+          text: "",
+          sender: "user",
+          time: formatVNDateTime(),
+          type: "sticker",
+          from: currentUser,
+          to: activeChat.name,
+          url: sticker.url,
+          optimistic: true,
+        },
+      ],
+    }));
+  };
+
+  const handleSendGif = (gif) => {
+    if (!activeChat || !gif?.url) return;
+
+    const payloadText = JSON.stringify({
+      customType: "gif",
+      gifId: gif.id,
+      url: gif.url,
+      text: "",
+    });
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: payloadText,
+      })
+    );
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [chatKey]: [
+        ...(prev[chatKey] || []),
+        {
+          id: `local-${Date.now()}`,
+          text: "",
+          sender: "user",
+          time: formatVNDateTime(),
+          type: "gif",
+          from: currentUser,
+          to: activeChat.name,
+          url: gif.url,
+          optimistic: true,
+        },
+      ],
+    }));
+  };
+
   const loadHistory = (page = 1, chat = activeChat) => {
     if (!chat) return;
 
@@ -320,6 +386,8 @@ export default function useChatLogic({
       handleChatSelect,
       loadHistory,
       handleFileUpload,
+      handleSendSticker,
+      handleSendGif,
     },
   };
 }

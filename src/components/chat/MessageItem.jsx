@@ -1,10 +1,8 @@
 import React from "react";
 import { FaUserCircle, FaFileAlt } from "react-icons/fa";
 
-
 const tryParseCustomPayload = (text) => {
   if (!text || typeof text !== "string") return null;
-
 
   if (!text.startsWith("{")) return null;
 
@@ -13,7 +11,7 @@ const tryParseCustomPayload = (text) => {
 
     if (parsed && parsed.customType && parsed.url) {
       return {
-        type: parsed.customType, 
+        type: parsed.customType,
         url: parsed.url,
         text: parsed.text || "",
         fileName: parsed.fileName || null,
@@ -53,6 +51,24 @@ export default function MessageItem({ msg }) {
     <div className="flex flex-col gap-2">
       {finalType === "emoji" && (
         <div className="text-base leading-none">{finalText}</div>
+      )}
+
+      {finalType === "sticker" && finalUrl && (
+        <img
+          src={finalUrl}
+          alt="sticker"
+          className="w-28 h-28 object-contain"
+          onClick={() => window.open(finalUrl, "_blank")}
+        />
+      )}
+
+      {finalType === "gif" && finalUrl && (
+        <img
+          src={finalUrl}
+          alt="gif"
+          className="w-44 h-32 object-cover rounded-lg"
+          onClick={() => window.open(finalUrl, "_blank")}
+        />
       )}
 
       {finalType === "image" && finalUrl && (
