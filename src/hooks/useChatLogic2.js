@@ -2,61 +2,77 @@ import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
 import {
-    makeOutgoingPayload,
-    makeChatKeyFromActive,
-    formatVNDateTime,
-    makeChatKeyFromWs,
+  parseCustomMessage,
+  buildEmojiMessage,
+  makeOutgoingPayload,
+  makeChatKeyFromActive,
+  formatVNDateTime,
+  makeChatKeyFromWs,
 } from "../utils/chatDataFormatter";
-
+import { setListUser } from "../redux/slices/listUserSlice.js";
+import { useDispatch } from "react-redux";
 
 const tryParseCustomPayload = (text) => {
-    if (!text || typeof text !== "string") return null;
-    if (text.length < 15 || !text.startsWith("{")) return null;
+  if (!text || typeof text !== "string") return null;
+  if (text.length < 10 || !text.startsWith("{")) return null;
 
-    try {
-        const parsed = JSON.parse(text);
-        if (parsed?.customType && parsed?.url) {
-            return {
-                type: parsed.customType,
-                url: parsed.url,
-                text: parsed.text || "",
-                fileName: parsed.fileName || null,
-            };
-        }
-    } catch (_) { }
+  try {
+    const parsed = JSON.parse(text);
 
-    return null;
+    if (parsed?.customType && parsed?.url) {
+      return {
+        type: parsed.customType,
+        url: parsed.url,
+        text: parsed.text || "",
+        fileName: parsed.fileName || null,
+      };
+    }
+
+    if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+      const emojiText = parsed.cps
+        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .join("");
+
+      return {
+        type: "emoji",
+        url: null,
+        text: emojiText,
+        fileName: null,
+      };
+    }
+  } catch (_) {}
+
+  return null;
 };
 
-export default function useChatLogic({
-    activeChat,
-    setActiveChat,
-    currentUser,
-}) {
-    const [messagesMap, setMessagesMap] = useState({});
-    const [input, setInput] = useState("");
-    const [searchTerm, setSearchTerm] = useState("");
-    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [showStickerPicker, setShowStickerPicker] = useState(false);
-    const [showGroupMenu, setShowGroupMenu] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
+const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
-    const messagesEndRef = useRef(null);
-    const chatKey = makeChatKeyFromActive(activeChat);
-    const messages = chatKey ? messagesMap[chatKey] || [] : [];
+export default function useChatLogic({ activeChat, setActiveChat, currentUser }) {
+  const [messagesMap, setMessagesMap] = useState({});
+  const [input, setInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+  const dispatch = useDispatch();
 
- 
-    useEffect(() => {
-        const onIncoming = (payload) => {
-            const d = payload?.data?.data || payload?.data || payload || {};
-            const { type, to, mes } = d;
-            const from = d.from ?? d.name;
+  const messagesEndRef = useRef(null);
+  const chatKey = makeChatKeyFromActive(activeChat);
+  const messages = chatKey ? messagesMap[chatKey] || [] : [];
 
-            if (!mes) return;
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    const onIncoming = (payload) => {
+      const d = payload?.data?.data || payload?.data || payload || {};
+      const { type, to, mes } = d;
+      const from = d.from ?? d.name;
+
+      if (!mes) return;
 
             const incomingKey = makeChatKeyFromWs({
                 type,
@@ -79,27 +95,28 @@ export default function useChatLogic({
             
             const finalFileName = fileData?.fileName || null;
 
-            setMessagesMap((prev) => ({
-                ...prev,
-                [incomingKey]: [
-                    ...(prev[incomingKey] || []),
-                    {
-                        id: Date.now() + Math.random(),
-                        text: finalText,
-                        sender: "other",
-                        time: formatVNDateTime(),
-                        type: finalType,
-                        from,
-                        url: finalUrl,
-                        fileName: finalFileName,
-                    },
-                ],
-            }));
-        };
+      setMessagesMap((prev) => ({
+        ...prev,
+        [incomingKey]: [
+          ...(prev[incomingKey] || []),
+          {
+            id: Date.now() + Math.random(),
+            text: finalText,
+            sender: "other",
+            time: formatVNDateTime(),
+            type: finalType,
+            from,
+            to,
+            url: finalUrl,
+            fileName: finalFileName,
+          },
+        ],
+      }));
+    };
 
-        const onHistory = (payload) => {
-            const { status, event, data } = payload || {};
-            if (status !== "success") return;
+    const onHistory = (payload) => {
+      const { status, event, data } = payload || {};
+      if (status !== "success") return;
 
             const mapHistoryMessage = (m) => {
                 const fileData = tryParseCustomPayload(m.mes);
@@ -119,194 +136,263 @@ export default function useChatLogic({
                 };
             };
 
-            if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
-                const otherUser =
-                    data[0]?.name === currentUser ? data[0]?.to : data[0]?.name;
-                if (!otherUser) return;
-
-                setMessagesMap((prev) => ({
-                    ...prev,
-                    [`user:${otherUser}`]: data
-                        .slice()
-                        .reverse()
-                        .map(mapHistoryMessage),
-                }));
-            }
-
-            if (
-                event === "GET_ROOM_CHAT_MES" &&
-                Array.isArray(data?.chatData)
-            ) {
-                setMessagesMap((prev) => ({
-                    ...prev,
-                    [`group:${data.name}`]: data.chatData
-                        .slice()
-                        .reverse()
-                        .map(mapHistoryMessage),
-                }));
-            }
-        };
-
-        chatSocketServer.on("SEND_CHAT", onIncoming);
-        chatSocketServer.on("GET_ROOM_CHAT_MES", onHistory);
-        chatSocketServer.on("GET_PEOPLE_CHAT_MES", onHistory);
-
-        return () => {
-            chatSocketServer.off("SEND_CHAT", onIncoming);
-            chatSocketServer.off("GET_ROOM_CHAT_MES", onHistory);
-            chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
-        };
-    }, [currentUser]);
-
-    /**
-     * =================================================
-     * SEND TEXT
-     * =================================================
-     */
-    const handleSend = () => {
-        if (!activeChat) return;
-
-        const text = input.trim();
-        if (!text) return;
-
-        const payload = makeOutgoingPayload({
-            type: activeChat.type,
-            to: activeChat.name,
-            mes: text,
-        });
-
-        chatSocketServer.send("SEND_CHAT", payload);
+      if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
+        const otherUser =
+          data[0]?.name === currentUser ? data[0]?.to : data[0]?.name;
+        if (!otherUser) return;
 
         setMessagesMap((prev) => ({
-            ...prev,
-            [chatKey]: [
-                ...(prev[chatKey] || []),
-                {
-                    id: `local-${Date.now()}`,
-                    text,
-                    sender: "user",
-                    time: formatVNDateTime(),
-                    type: "text",
-                    from: currentUser,
-                    to: activeChat.name,
-                    optimistic: true,
-                },
-            ],
+          ...prev,
+          [`user:${otherUser}`]: data.slice().reverse().map(mapHistoryMessage),
         }));
+      }
 
-        setInput("");
+      if (event === "GET_ROOM_CHAT_MES" && Array.isArray(data?.chatData)) {
+        setMessagesMap((prev) => ({
+          ...prev,
+          [`group:${data.name}`]: data.chatData
+            .slice()
+            .reverse()
+            .map(mapHistoryMessage),
+        }));
+      }
     };
 
-    /**
-     * =================================================
-     * FILE / VOICE UPLOAD
-     * =================================================
-     */
-    const handleFileUpload = async (file) => {
-        if (!activeChat || !file) return;
+    chatSocketServer.on("SEND_CHAT", onIncoming);
+    chatSocketServer.on("GET_ROOM_CHAT_MES", onHistory);
+    chatSocketServer.on("GET_PEOPLE_CHAT_MES", onHistory);
 
-        setIsUploading(true);
-
-        try {
-            const url = await uploadFileToS3(file);
-            if (!url) return;
-
-            const ext = file.name.split(".").pop().toLowerCase();
-            const type = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
-                ? "image"
-                : ["mp4", "webm"].includes(ext)
-                    ? "video"
-                    : ["mp3", "wav", "ogg", "webm"].includes(ext)
-                        ? "audio"
-                        : "file";
-
-            const captionText = input.trim(); 
-
-            const payloadText = JSON.stringify({
-            customType: type,
-            url,
-            text: captionText,
-            fileName: file.name,
-            });
-
-          
-            setInput(""); 
-
-            chatSocketServer.send(
-                "SEND_CHAT",
-                makeOutgoingPayload({
-                    type: activeChat.type,
-                    to: activeChat.name,
-                    mes: payloadText,
-                })
-            );
-
-            setMessagesMap((prev) => ({
-                ...prev,
-                [chatKey]: [
-                    ...(prev[chatKey] || []),
-                    {
-                        id: `local-${Date.now()}`,
-                        text: captionText,
-                        sender: "user",
-                        time: formatVNDateTime(),
-                        type,
-                        from: currentUser,
-                        to: activeChat.name,
-                        url,
-                        fileName: file.name,
-                        optimistic: true,
-                    },
-                ],
-            }));
-
-        } finally {
-            setIsUploading(false);
-        }
+    return () => {
+      chatSocketServer.off("SEND_CHAT", onIncoming);
+      chatSocketServer.off("GET_ROOM_CHAT_MES", onHistory);
+      chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
     };
+  }, [currentUser]);
 
-    /**
-     * =================================================
-     * LOAD HISTORY & UI HELPERS
-     * =================================================
-     */
-    const loadHistory = (page = 1, chat = activeChat) => {
-        if (!chat) return;
+  const handleSend = () => {
+    if (!activeChat) return;
 
-        chatSocketServer.send(
-            chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",
-            { name: chat.name, page }
-        );
-    };
+    const text = input.trim();
+    if (!text) return;
 
-    const handleChatSelect = (contact) => {
-        setActiveChat(contact);
-        loadHistory(1, contact);
-        setShowEmojiPicker(false);
-        setShowStickerPicker(false);
-        setShowGroupMenu(false);
-    };
+    const mesToSend = hasEmoji(text) ? buildEmojiMessage(text) : text;
 
-    return {
-        activeChat,
-        messages,
-        input,
-        setInput,
-        searchTerm,
-        setSearchTerm,
-        messagesEndRef,
-        isUploading,
-        showEmojiPicker,
-        showStickerPicker,
-        showGroupMenu,
-        toggleEmojiPicker: () => setShowEmojiPicker((v) => !v),
-        toggleStickerPicker: () => setShowStickerPicker((v) => !v),
-        toggleGroupMenu: () => setShowGroupMenu((v) => !v),
-        handlers: {
-            handleSend,
-            handleChatSelect,
-            loadHistory,
-            handleFileUpload,
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: mesToSend,
+      })
+    );
+
+    const optimisticType = hasEmoji(text) ? "emoji" : "text";
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [chatKey]: [
+        ...(prev[chatKey] || []),
+        {
+          id: `local-${Date.now()}`,
+          text,
+          sender: "user",
+          time: formatVNDateTime(),
+          type: optimisticType,
+          from: currentUser,
+          to: activeChat.name,
+          optimistic: true,
         },
-    };
+      ],
+    }));
+
+    dispatch(
+      setListUser({
+        name: activeChat.name,
+        lastMessage: text,
+        actionTime: Date.now(),
+        type: activeChat.type,
+      })
+    );
+
+    setInput("");
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!activeChat || !file) return;
+
+    setIsUploading(true);
+
+    try {
+      const url = await uploadFileToS3(file);
+      if (!url) return;
+
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      const type = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
+        ? "image"
+        : ["mp4", "webm"].includes(ext)
+        ? "video"
+        : ["mp3", "wav", "ogg", "webm"].includes(ext)
+        ? "audio"
+        : "file";
+
+      const captionText = input.trim();
+
+      const payloadText = JSON.stringify({
+        customType: type,
+        url,
+        text: captionText,
+        fileName: file.name,
+      });
+
+      setInput("");
+
+      chatSocketServer.send(
+        "SEND_CHAT",
+        makeOutgoingPayload({
+          type: activeChat.type,
+          to: activeChat.name,
+          mes: payloadText,
+        })
+      );
+
+      setMessagesMap((prev) => ({
+        ...prev,
+        [chatKey]: [
+          ...(prev[chatKey] || []),
+          {
+            id: `local-${Date.now()}`,
+            text: captionText,
+            sender: "user",
+            time: formatVNDateTime(),
+            type,
+            from: currentUser,
+            to: activeChat.name,
+            url,
+            fileName: file.name,
+            optimistic: true,
+          },
+        ],
+      }));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSendSticker = (sticker) => {
+    if (!activeChat || !sticker?.url) return;
+
+    const payloadText = JSON.stringify({
+      customType: "sticker",
+      stickerId: sticker.id,
+      url: sticker.url,
+      text: "",
+    });
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: payloadText,
+      })
+    );
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [chatKey]: [
+        ...(prev[chatKey] || []),
+        {
+          id: `local-${Date.now()}`,
+          text: "",
+          sender: "user",
+          time: formatVNDateTime(),
+          type: "sticker",
+          from: currentUser,
+          to: activeChat.name,
+          url: sticker.url,
+          optimistic: true,
+        },
+      ],
+    }));
+  };
+
+  const handleSendGif = (gif) => {
+    if (!activeChat || !gif?.url) return;
+
+    const payloadText = JSON.stringify({
+      customType: "gif",
+      gifId: gif.id,
+      url: gif.url,
+      text: "",
+    });
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: payloadText,
+      })
+    );
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [chatKey]: [
+        ...(prev[chatKey] || []),
+        {
+          id: `local-${Date.now()}`,
+          text: "",
+          sender: "user",
+          time: formatVNDateTime(),
+          type: "gif",
+          from: currentUser,
+          to: activeChat.name,
+          url: gif.url,
+          optimistic: true,
+        },
+      ],
+    }));
+  };
+
+  const loadHistory = (page = 1, chat = activeChat) => {
+    if (!chat) return;
+
+    chatSocketServer.send(
+      chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",
+      { name: chat.name, page }
+    );
+  };
+
+  const handleChatSelect = (contact) => {
+    setActiveChat(contact);
+    loadHistory(1, contact);
+    setShowEmojiPicker(false);
+    setShowStickerPicker(false);
+    setShowGroupMenu(false);
+  };
+
+  return {
+    activeChat,
+    messages,
+    input,
+    setInput,
+    searchTerm,
+    setSearchTerm,
+    messagesEndRef,
+    isUploading,
+    showEmojiPicker,
+    showStickerPicker,
+    showGroupMenu,
+    toggleEmojiPicker: () => setShowEmojiPicker((v) => !v),
+    toggleStickerPicker: () => setShowStickerPicker((v) => !v),
+    toggleGroupMenu: () => setShowGroupMenu((v) => !v),
+    handlers: {
+      handleSend,
+      handleChatSelect,
+      loadHistory,
+      handleFileUpload,
+      handleSendSticker,
+      handleSendGif,
+    },
+  };
 }

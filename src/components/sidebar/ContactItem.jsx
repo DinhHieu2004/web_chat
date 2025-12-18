@@ -1,9 +1,9 @@
 import React from "react";
 import { FaUser, FaUsers } from "react-icons/fa";
+import { formatRelativeTime } from "../../utils/Time";
 
 export default function ContactItem({ contact, active, onClick }) {
   const isRoom = contact.type === "room";
-
   return (
     <div
       onClick={onClick}
@@ -30,6 +30,11 @@ export default function ContactItem({ contact, active, onClick }) {
           </p>
         )}
       </div>
+        {contact.actionTime && (
+            <div className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                {formatRelativeTime(contact.actionTime)}
+            </div>
+        )}
     </div>
   );
 }
