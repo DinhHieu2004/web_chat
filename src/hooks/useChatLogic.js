@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { chatSocketServer } from "../services/socket";
+import { useDispatch } from "react-redux";
+import { setListUser } from "../redux/slices/listUserSlice";
 
 export default function useChatLogic({
   activeChat,
@@ -13,7 +15,7 @@ export default function useChatLogic({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
-
+  const dispatch = useDispatch();
   const makeChatKeyFromActive = (chat) => {
     if (!chat) return null;
     if (chat.type === "room") return `group:${chat.name}`;
@@ -184,7 +186,12 @@ export default function useChatLogic({
       to,
       mes: text,
     });
-
+    dispatch(setListUser({
+        name: activeChat.name,
+        lastMessage: text,
+        actionTime: Date.now(),
+        type: activeChat.type,
+      }));
     const key = chatKey;
     if (!key) return;
 
@@ -196,14 +203,14 @@ export default function useChatLogic({
         [key]: [
           ...prevMsgs,
           {
-            id: `local-${Date.now()}`, 
+            id: `local-${Date.now()}`,
             text,
             sender: "user",
             time: now,
             type: "text",
-            from: currentUser, 
+            from: currentUser,
             to,
-            optimistic: true, 
+            optimistic: true,
           },
         ],
       };

@@ -7,6 +7,8 @@ import {
     formatVNDateTime,
     makeChatKeyFromWs,
 } from "../utils/chatDataFormatter";
+import {setListUser} from "../redux/slices/listUserSlice.js";
+import {useDispatch} from "react-redux";
 
 
 const tryParseCustomPayload = (text) => {
@@ -40,6 +42,7 @@ export default function useChatLogic({
     const [showStickerPicker, setShowStickerPicker] = useState(false);
     const [showGroupMenu, setShowGroupMenu] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const dispatch = useDispatch();
 
     const messagesEndRef = useRef(null);
     const chatKey = makeChatKeyFromActive(activeChat);
@@ -74,7 +77,7 @@ export default function useChatLogic({
 
             const finalType = fileData?.type || "text";
             const finalUrl = fileData?.url || null;
-            const finalText = fileData?.text || mes;
+            const finalText = fileData ? fileData.text : mes;
             const finalFileName = fileData?.fileName || null;
 
             setMessagesMap((prev) => ({
@@ -104,7 +107,7 @@ export default function useChatLogic({
 
                 return {
                     id: m.id ?? Date.now() + Math.random(),
-                    text: fileData?.text || m.mes || "",
+                    text: fileData ? fileData.text : m.mes || "",
                     sender: m.name === currentUser ? "user" : "other",
                     time: formatVNDateTime(m.createAt),
                     type: fileData?.type || m.messageType || "text",
@@ -189,7 +192,12 @@ export default function useChatLogic({
                 },
             ],
         }));
-
+        dispatch(setListUser({
+            name: activeChat.name,
+            lastMessage: text,
+            actionTime: Date.now(),
+            type: activeChat.type,
+        }));
         setInput("");
     };
 
@@ -254,6 +262,12 @@ export default function useChatLogic({
                         optimistic: true,
                     },
                 ],
+            }));
+            dispatch(setListUser({
+                name: activeChat.name,
+                lastMessage: type,
+                actionTime: Date.now(),
+                type: activeChat.type,
             }));
 
         } finally {

@@ -1,32 +1,22 @@
-import React, {useEffect, useRef} from "react";
-import {useSelector, useDispatch} from "react-redux";
+import React from "react";
 import SidebarSearch from "./SidebarSearch";
 import ContactItem from "./ContactItem";
-import {getList, setShowCreateModal, setActiveChat,} from "../../redux/slices/listUserSlice";
 import CreateRoomModal from "../room/CreateRoomModal";
+import JoinRoomModal from "../room/JoinRoomModal";
+import { setShowCreateModal, setShowJoinModal } from "../../redux/slices/listUserSlice";
+import { useDispatch, useSelector } from "react-redux";
+import useSidebarLogic from "../../hooks/useSidebarLogic";
 
 export default function Sidebar({searchTerm, setSearchTerm, onSelectContact}) {
     const dispatch = useDispatch();
-    const {list, activeChatId, showCreateModal} = useSelector((state) => state.listUser);
-    const {isAuthenticated} = useSelector((state) => state.auth);
-    const bootedRef = useRef(false);
-
-    useEffect(() => {
-        if (bootedRef.current) return;
-        bootedRef.current = true;
-        if (isAuthenticated) {
-            dispatch(getList());
-        }
-    }, [dispatch, isAuthenticated]);
-
-    const filtered = list.filter((c) =>
-        (c.name || "").toLowerCase().includes((searchTerm || "").toLowerCase())
+    const { showJoinModal, showCreateModal } = useSelector(
+        state => state.listUser
     );
 
-    const handleSelect = (item) => {
-        dispatch(setActiveChat(item.name));
-        onSelectContact?.(item);
-    };
+    const { filtered, activeChatId, handleSelect } = useSidebarLogic(
+        searchTerm,
+        onSelectContact
+    );
 
     return (
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
@@ -36,10 +26,16 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact}) {
                 <div className="gap-2 mt-3">
                     <button
                         onClick={() => dispatch(setShowCreateModal(true))}
-                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2"
-                    >
+                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
                         + Tạo nhóm
                     </button>
+                    <button onClick={() => dispatch(setShowJoinModal(true))}
+                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
+                        + Tham gia</button>
+
+                    <button
+                            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
+                        + Thêm bạn</button>
                 </div>
             </div>
 
@@ -53,7 +49,7 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact}) {
                     />
                 ))}
             </div>
-
+            {showJoinModal && <JoinRoomModal />}
             {showCreateModal && <CreateRoomModal/>}
         </div>
     );
