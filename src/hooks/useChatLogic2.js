@@ -74,21 +74,26 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
 
       if (!mes) return;
 
-      const incomingKey = makeChatKeyFromWs({
-        type,
-        from,
-        to,
-        currentUser,
-      });
-      if (!incomingKey) return;
-      if (from === currentUser) return;
+            const incomingKey = makeChatKeyFromWs({
+                type,
+                from,
+                to,
+                currentUser,
+            });
+            if (!incomingKey) return;
 
-      const parsed = parseCustomMessage(mes);
+            if (from === currentUser) {
+                return;
+            }
 
-      const finalType = parsed?.type || "text";
-      const finalUrl = parsed?.url || null;
-      const finalText = parsed?.text ?? mes;
-      const finalFileName = parsed?.fileName || null;
+            const fileData = tryParseCustomPayload(mes);
+
+            const finalType = fileData?.type || "text";
+            const finalUrl = fileData?.url || null;
+            const finalText = fileData ? fileData.text : mes
+
+            
+            const finalFileName = fileData?.fileName || null;
 
       setMessagesMap((prev) => ({
         ...prev,
@@ -113,21 +118,23 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
       const { status, event, data } = payload || {};
       if (status !== "success") return;
 
-      const mapHistoryMessage = (m) => {
-        const parsed = tryParseCustomPayload(m.mes);
+            const mapHistoryMessage = (m) => {
+                const fileData = tryParseCustomPayload(m.mes);
 
-        return {
-          id: m.id ?? Date.now() + Math.random(),
-          text: parsed?.text ?? m.mes ?? "",
-          sender: m.name === currentUser ? "user" : "other",
-          time: formatVNDateTime(m.createAt),
-          type: parsed?.type || m.messageType || "text",
-          from: m.name,
-          to: m.to,
-          url: parsed?.url || m.url || null,
-          fileName: parsed?.fileName || null,
-        };
-      };
+                return {
+                    id: m.id ?? Date.now() + Math.random(),
+                    text: fileData 
+                    ? fileData.text 
+                    : m.mes || "",
+                    sender: m.name === currentUser ? "user" : "other",
+                    time: formatVNDateTime(m.createAt),
+                    type: fileData?.type || m.messageType || "text",
+                    from: m.name,
+                    to: m.to,
+                    url: fileData?.url || m.url || null,
+                    fileName: fileData?.fileName || null,
+                };
+            };
 
       if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
         const otherUser =
@@ -271,6 +278,61 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
     }
   };
 
+  const handleSendVoice = async (audioBlob) => {
+  if (!activeChat || !audioBlob) return;
+
+  setIsUploading(true);
+
+  try {
+    const fileName = `voice-${Date.now()}.webm`;
+
+    const audioFile = new File([audioBlob], fileName, {
+      type: audioBlob.type || "audio/webm",
+    });
+
+    const url = await uploadFileToS3(audioFile);
+    if (!url) return;
+
+    const payloadText = JSON.stringify({
+      customType: "audio",
+      url,
+      text: "",
+      fileName,
+    });
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: payloadText,
+      })
+    );
+
+    setMessagesMap((prev) => ({
+      ...prev,
+      [chatKey]: [
+        ...(prev[chatKey] || []),
+        {
+          id: `local-${Date.now()}`,
+          text: "",
+          sender: "user",
+          time: formatVNDateTime(),
+          type: "audio",
+          from: currentUser,
+          to: activeChat.name,
+          url,
+          fileName,
+          optimistic: true,
+        },
+      ],
+    }));
+  } finally {
+    setIsUploading(false);
+  }
+};
+
+
   const handleSendSticker = (sticker) => {
     if (!activeChat || !sticker?.url) return;
 
@@ -380,6 +442,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
     toggleStickerPicker: () => setShowStickerPicker((v) => !v),
     toggleGroupMenu: () => setShowGroupMenu((v) => !v),
     handlers: {
+      handleSendVoice,
       handleSend,
       handleChatSelect,
       loadHistory,
