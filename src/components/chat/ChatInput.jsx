@@ -17,7 +17,7 @@ export default function ChatInput({
   setInput,
   handlers,
   toggleGroupMenu,
-  isUploading,
+  isUploading, replyMsg, clearReply, getMessagePreview
 }) {
   const { handleSend, handleFileUpload } = handlers;
 
@@ -151,8 +151,19 @@ export default function ChatInput({
           </div>
         </div>
       )}
-
-      {/* Input area */}
+        {replyMsg && (
+            <div className="flex items-center justify-between px-3 py-2 mb-2
+                  bg-gray-100 border-l-4 border-purple-500 rounded">
+                <div className="text-xs text-gray-700 truncate">
+                     <span className="font-semibold">Trả lời {replyMsg.sender === "user" ? "Bạn" : replyMsg.from}</span>
+                    <div className="italic truncate">
+                        {getMessagePreview (replyMsg)}
+                    </div>
+                </div>
+                <button onClick={clearReply} className="ml-2 text-gray-400 hover:text-red-500">✕</button>
+            </div>
+        )}
+        {/* Input area */}
       <div className="px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
