@@ -1,54 +1,63 @@
 import React from "react";
 import {FaUserCircle, FaFileAlt, FaReply} from "react-icons/fa";
 
-const tryParseCustomPayload = (text) => {
-    if (!text || typeof text !== "string") return null;
+// <<<<<<< HEAD
+// const tryParseCustomPayload = (text) => {
+//     if (!text || typeof text !== "string") return null;
 
-    if (!text.startsWith("{")) return null;
+//     if (!text.startsWith("{")) return null;
 
-    try {
-        const parsed = JSON.parse(text);
+//     try {
+//         const parsed = JSON.parse(text);
 
-        if (parsed && parsed.customType) {
-            return {
-                type: parsed.customType,
-                url: parsed.url || null,
-                text: parsed.text || "",
-                fileName: parsed.fileName || null,
-                meta: parsed.meta || null,
-            };
-        }
+//         if (parsed && parsed.customType) {
+//             return {
+//                 type: parsed.customType,
+//                 url: parsed.url || null,
+//                 text: parsed.text || "",
+//                 fileName: parsed.fileName || null,
+//                 meta: parsed.meta || null,
+//             };
+//         }
 
-        if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
-            const emojiText = parsed.cps
-                .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
-                .join("");
+//         if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+//             const emojiText = parsed.cps
+//                 .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+//                 .join("");
 
-            return {
-                type: "emoji",
-                url: null,
-                text: emojiText,
-                fileName: null,
-                meta: parsed.meta || null,
-            };
-        }
-    } catch (e) {
-        return null;
-    }
+//             return {
+//                 type: "emoji",
+//                 url: null,
+//                 text: emojiText,
+//                 fileName: null,
+//                 meta: parsed.meta || null,
+//             };
+//         }
+//     } catch (e) {
+//         return null;
+//     }
 
-    return null;
-};
+//     return null;
+// };
 
-export default function MessageItem({msg, onReply}) {
-    const isMe = msg.sender === "user";
+// export default function MessageItem({msg, onReply}) {
+//     const isMe = msg.sender === "user";
 
-    const parsedFromText = tryParseCustomPayload(msg.text);
-    const finalType = parsedFromText?.type || msg.type || "text";
-    const finalUrl = parsedFromText?.url || msg.url || null;
-    const finalText = parsedFromText?.text ?? msg.text ?? "";
-    const finalFileName = parsedFromText?.fileName || msg.fileName || null;
+//     const parsedFromText = tryParseCustomPayload(msg.text);
+//     const finalType = parsedFromText?.type || msg.type || "text";
+//     const finalUrl = parsedFromText?.url || msg.url || null;
+//     const finalText = parsedFromText?.text ?? msg.text ?? "";
+//     const finalFileName = parsedFromText?.fileName || msg.fileName || null;
 
-    const replyMeta = msg.meta?.reply;
+//     const replyMeta = msg.meta?.reply;
+// =======
+export default function MessageItem({ msg }) {
+  const isMe = msg.sender === "user";
+
+  const finalType = msg.type || "text";
+  const finalUrl = msg.url || null;
+  const finalText = msg.text || "";
+  const finalFileName = msg.fileName || null;
 
     const renderContent = () => (
         <div className="flex flex-col gap-2">
@@ -83,11 +92,12 @@ export default function MessageItem({msg, onReply}) {
                 />
             )}
 
-            {finalType === "audio" && finalUrl && (
-                <audio controls className="max-w-xs">
-                    <source src={finalUrl}/>
-                </audio>
-            )}
+
+      {finalType === "audio" && finalUrl && (
+        <audio controls className="max-w-xs">
+          <source src={finalUrl} type="audio/webm" />
+        </audio>
+      )}
 
             {finalType === "video" && finalUrl && (
                 <video controls className="max-w-xs rounded-lg">
@@ -106,12 +116,12 @@ export default function MessageItem({msg, onReply}) {
                     {finalFileName || "Tải file"}
                 </a>
             )}
-
             {finalType !== "emoji" && finalText && finalText.trim() && (
                 <p className="text-sm wrap-break-words whitespace-pre-wrap">
                     {finalText}
                 </p>
             )}
+
         </div>
     );
 
