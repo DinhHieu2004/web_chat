@@ -4,7 +4,7 @@ import { setActiveChat } from "../../redux/slices/listUserSlice";
 
 import Sidebar from "../sidebar/Sidebar";
 import ChatArea from "./ChatArea";
-import useChatLogic from "../../hooks/useChatLogic2";
+import useChatLogic from "../../hooks/useChatLogic";
 
 export default function ChatContainer() {
   const dispatch = useDispatch();
