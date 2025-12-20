@@ -13,7 +13,7 @@ export default function ChatArea({
 
   showEmojiPicker,
   toggleEmojiPicker,
-
+  isGroupChat,
   ...rest
 }) {
   return (
@@ -32,6 +32,7 @@ export default function ChatArea({
         handlers={handlers}
         showEmojiPicker={showEmojiPicker}
         toggleEmojiPicker={toggleEmojiPicker}
+        isGroupChat={isGroupChat}
         {...rest}
       />
     </div>

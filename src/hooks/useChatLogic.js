@@ -10,6 +10,7 @@ import {
   makeChatKeyFromActive,
   formatVNDateTime,
   makeChatKeyFromWs,
+  hasEmoji,
 } from "../utils/chatDataFormatter";
 
 import {
@@ -19,9 +20,6 @@ import {
 } from "../redux/slices/chatSlice";
 import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
 import { setListUser } from "../redux/slices/listUserSlice";
-
-const hasEmoji = (s = "") =>
-  /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
 
 export default function useChatLogic({

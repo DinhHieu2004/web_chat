@@ -13,6 +13,9 @@ import {
     FaTimes,
     FaMicrophone,
 } from "react-icons/fa";
+
+import { LuSticker } from "react-icons/lu";
+
 import { FaPaperPlane } from "react-icons/fa6";
 
 export default function ChatInput({
@@ -21,6 +24,7 @@ export default function ChatInput({
     handlers,
     toggleGroupMenu,
     isUploading,
+    isGroupChat,
 }) {
     const [record, setRecord] = useState(false);
 
@@ -161,15 +165,17 @@ export default function ChatInput({
             <div className="px-4 py-3">
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
-                        <button
-                            onClick={toggleGroupMenu}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-purple-500"
-                            title="Thêm"
-                            disabled={isUploading}
-                            type="button"
-                        >
-                            <FaPlus size={18} />
-                        </button>
+                        {isGroupChat && (
+                            <button
+                                onClick={toggleGroupMenu}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+                                title="Tạo cuộc tham dò ý kiến"
+                                disabled={isUploading}
+                                type="button"
+                            >
+                                <FaChartBar size={18} />
+                            </button>
+                        )}
 
                         <button
                             onClick={handleFileClick}
@@ -200,7 +206,7 @@ export default function ChatInput({
                                 disabled={isUploading}
                                 type="button"
                             >
-                                <FaChartBar size={18} />
+                                <LuSticker size={18} />
                             </button>
 
                             <button

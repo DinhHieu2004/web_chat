@@ -129,3 +129,6 @@ export const buildEmojiMessage = (text) => {
         cps,
     });
 };
+
+export const hasEmoji = (s = "") =>
+  /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);

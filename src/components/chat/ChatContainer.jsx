@@ -24,6 +24,9 @@ export default function ChatContainer() {
     currentUser: user,
   });
 
+  const isGroupChat = activeChat?.type === "room";
+
+
   return (
     <div className="flex h-screen bg-gray-100 p-2 overflow-hidden">
       <Sidebar
@@ -55,6 +58,7 @@ export default function ChatContainer() {
           toggleStickerPicker={chat.toggleStickerPicker}
           showGroupMenu={chat.showGroupMenu}
           toggleGroupMenu={chat.toggleGroupMenu}
+          isGroupChat={isGroupChat}
         />
       </div>
     </div>
