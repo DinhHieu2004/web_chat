@@ -116,7 +116,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
             to,
             url: finalUrl,
             fileName: finalFileName,
-              meta: parsed?.meta || null,
+              meta: fileData?.meta || null,
           },
         ],
       }));

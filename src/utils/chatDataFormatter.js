@@ -87,36 +87,46 @@ export const parseCustomMessage = (mes) => {
 };
 
 export const tryParseCustomPayload = (text) => {
-  if (!text || typeof text !== "string") return null;
-  if (text.length < 10 || !text.startsWith("{")) return null;
+    if (!text || typeof text !== "string") return null;
+    if (text.length < 10 || !text.startsWith("{")) return null;
 
-  try {
-    const parsed = JSON.parse(text);
+    try {
+        const parsed = JSON.parse(text);
 
-    if (parsed?.customType && parsed?.url) {
-      return {
-        type: parsed.customType,
-        url: parsed.url,
-        text: parsed.text || "",
-        fileName: parsed.fileName || null,
-      };
+        if (parsed?.customType && parsed?.url) {
+            return {
+                type: parsed.customType,
+                url: parsed.url,
+                text: parsed.text || "",
+                fileName: parsed.fileName || null,
+                meta: parsed.meta || null,
+            };
+        }
+
+        if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+            const emojiText = parsed.cps
+                .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+                .join("");
+
+            return {
+                type: "emoji",
+                url: null,
+                text: emojiText,
+                fileName: null,
+                meta: parsed.meta || null,
+            };
+        }
+            return {
+                type: parsed.customType,
+                url: parsed.url,
+                text: parsed.text || "",
+                fileName: parsed.fileName || null,
+                meta: parsed.meta || null,
+            };
+    } catch (_) {
     }
 
-    if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
-      const emojiText = parsed.cps
-        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
-        .join("");
-
-      return {
-        type: "emoji",
-        url: null,
-        text: emojiText,
-        fileName: null,
-      };
-    }
-  } catch (_) {}
-
-  return null;
+    return null;
 };
 
 export const buildEmojiMessage = (text) => {
@@ -128,4 +138,39 @@ export const buildEmojiMessage = (text) => {
         customType: "emoji",
         cps,
     });
+};
+
+export const extractMessageText = (msg) => {
+    if (!msg) return "";
+
+    if (typeof msg === "string") {
+        try {
+            msg = JSON.parse(msg);
+        } catch {
+            return msg;
+        }
+    }
+
+    if (typeof msg.text === "string" && msg.text.trim().startsWith("{")) {
+        try {
+            const parsed = JSON.parse(msg.text);
+            return parsed.text || parsed.customType || parsed.type || "";
+        } catch {
+            return msg.text;
+        }
+    }
+
+    return msg.text || msg.type || "";
+};
+export const getMessagePreview = (msg) => {
+    return extractMessageText(msg);
+};
+export const getPurePreview = (msg) => {
+    if (!msg) return "";
+
+    if (msg?.meta?.reply?.preview) {
+        return msg.meta.reply.preview;
+    }
+
+    return extractMessageText(msg);
 };

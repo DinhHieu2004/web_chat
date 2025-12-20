@@ -52,13 +52,13 @@ import {FaUserCircle, FaFileAlt, FaReply} from "react-icons/fa";
 //     const replyMeta = msg.meta?.reply;
 // =======
 
-export default function MessageItem({ msg }) {
-  const isMe = msg.sender === "user";
-
-  const finalType = msg.type || "text";
-  const finalUrl = msg.url || null;
-  const finalText = msg.text || "";
-  const finalFileName = msg.fileName || null;
+export default function MessageItem({msg, onReply}) {
+    const isMe = msg.sender === "user";
+    const finalType = msg.type || "text";
+    const finalUrl = msg.url || null;
+    const finalText = msg.text || "";
+    const finalFileName = msg.fileName || null;
+    const replyMeta = msg.meta?.reply;
 
     const renderContent = () => (
         <div className="flex flex-col gap-2">
@@ -95,11 +95,11 @@ export default function MessageItem({ msg }) {
             )}
 
 
-      {finalType === "audio" && finalUrl && (
-        <audio controls className="max-w-xs">
-          <source src={finalUrl} type="audio/webm" />
-        </audio>
-      )}
+            {finalType === "audio" && finalUrl && (
+                <audio controls className="max-w-xs">
+                    <source src={finalUrl} type="audio/webm"/>
+                </audio>
+            )}
 
             {finalType === "video" && finalUrl && (
                 <video controls className="max-w-xs rounded-lg">
@@ -118,13 +118,13 @@ export default function MessageItem({ msg }) {
                     {finalFileName || "Tải file"}
                 </a>
             )}
-            {finalType !== "emoji" && finalText && finalText.trim() && (
-                <p className="text-sm wrap-break-words whitespace-pre-wrap">
+            {finalType !== "emoji" && finalText.trim() && (
+                <p className="text-sm break-words whitespace-pre-wrap">
                     {finalText}
                 </p>
             )}
-
-
+        </div>
+    );
     return (
         <div className={`flex mb-4 ${isMe ? "justify-end" : "justify-start"}`}>
             {!isMe && (
@@ -172,7 +172,6 @@ export default function MessageItem({ msg }) {
                 <button
                     onClick={() => {
                         onReply?.(msg);
-                        console.log(msg)
                     }}
                     className={`absolute -bottom-1 ${isMe ? "-left-8" : "-right-8"} opacity-0 group-hover:opacity-100
                                 text-gray-400 hover:text-purple-500 transition p-2`}
