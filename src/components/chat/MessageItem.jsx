@@ -51,6 +51,7 @@ import {FaUserCircle, FaFileAlt, FaReply} from "react-icons/fa";
 
 //     const replyMeta = msg.meta?.reply;
 // =======
+
 export default function MessageItem({ msg }) {
   const isMe = msg.sender === "user";
 
@@ -64,6 +65,7 @@ export default function MessageItem({ msg }) {
             {finalType === "emoji" && (
                 <div className="text-base leading-none">{finalText}</div>
             )}
+
 
             {finalType === "sticker" && finalUrl && (
                 <img
@@ -122,8 +124,6 @@ export default function MessageItem({ msg }) {
                 </p>
             )}
 
-        </div>
-    );
 
     return (
         <div className={`flex mb-4 ${isMe ? "justify-end" : "justify-start"}`}>

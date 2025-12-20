@@ -21,7 +21,9 @@ export default function ChatInput({
     setInput,
     handlers,
     toggleGroupMenu,
+
     isUploading, replyMsg, clearReply, getMessagePreview
+
 }) {
     const [record, setRecord] = useState(false);
 
@@ -184,7 +186,6 @@ export default function ChatInput({
                             <FaPlus size={18} />
                         </button>
 
-
                         <button
                             onClick={handleFileClick}
                             className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
@@ -258,6 +259,7 @@ export default function ChatInput({
                             </div>
                         </div>
                     </div>
+
 
                     {/* <input
             type="text"

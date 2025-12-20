@@ -86,6 +86,39 @@ export const parseCustomMessage = (mes) => {
     return null;
 };
 
+export const tryParseCustomPayload = (text) => {
+  if (!text || typeof text !== "string") return null;
+  if (text.length < 10 || !text.startsWith("{")) return null;
+
+  try {
+    const parsed = JSON.parse(text);
+
+    if (parsed?.customType && parsed?.url) {
+      return {
+        type: parsed.customType,
+        url: parsed.url,
+        text: parsed.text || "",
+        fileName: parsed.fileName || null,
+      };
+    }
+
+    if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+      const emojiText = parsed.cps
+        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .join("");
+
+      return {
+        type: "emoji",
+        url: null,
+        text: emojiText,
+        fileName: null,
+      };
+    }
+  } catch (_) {}
+
+  return null;
+};
+
 export const buildEmojiMessage = (text) => {
     const cps = Array.from(text).map((ch) =>
         ch.codePointAt(0).toString(16).toUpperCase()
