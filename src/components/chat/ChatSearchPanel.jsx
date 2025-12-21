@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { FiX, FiSearch } from "react-icons/fi";
 
-const norm = (s = "") => String(s).toLowerCase();
-
 function highlightSnippet(text = "", q = "") {
-  const query = q.trim();
+  const query = (q || "").trim();
   if (!query) return text;
+
   const lower = text.toLowerCase();
   const lowerQ = query.toLowerCase();
   const idx = lower.indexOf(lowerQ);
@@ -29,9 +28,14 @@ export default function ChatSearchPanel({
   onClose,
   query,
   setQuery,
-  results, 
-  onPickMessage, 
+  results,
+  onPickMessage,
   activeChatName,
+  senderFilter,
+  setSenderFilter,
+  dateFilter,
+  setDateFilter,
+  senderOptions,
 }) {
   const inputRef = useRef(null);
 
@@ -39,7 +43,7 @@ export default function ChatSearchPanel({
     if (open) setTimeout(() => inputRef.current?.focus(), 0);
   }, [open]);
 
-  const hasQuery = query.trim().length > 0;
+  const hasQuery = (query || "").trim().length > 0;
 
   const items = useMemo(() => {
     return (results || []).slice(0, 50);
@@ -50,7 +54,9 @@ export default function ChatSearchPanel({
   return (
     <div className="w-[360px] max-w-[90vw] h-full bg-white border-l border-gray-200 flex flex-col">
       <div className="px-4 py-3 flex items-center justify-between border-b border-gray-200">
-        <div className="font-semibold text-gray-800">Tìm kiếm trong trò chuyện</div>
+        <div className="font-semibold text-gray-800">
+          Tìm kiếm trong trò chuyện
+        </div>
         <button
           type="button"
           onClick={onClose}
@@ -60,21 +66,22 @@ export default function ChatSearchPanel({
           <FiX size={18} />
         </button>
       </div>
-
-      <div className="px-4 py-3">
+      <div className="px-4 py-3 border-b border-gray-100">
+        {/* Search box */}
         <div className="flex items-center gap-2 border border-blue-400 rounded-lg px-3 h-10">
           <FiSearch className="text-gray-500" />
           <input
             ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={query || ""}
+            onChange={(e) => setQuery?.(e.target.value)}
             placeholder="Nhập từ khóa để tìm kiếm"
-            className="flex-1 outline-none text-sm"
+            className="flex-1 outline-none text-sm bg-transparent"
           />
+
           {hasQuery && (
             <button
               type="button"
-              onClick={() => setQuery("")}
+              onClick={() => setQuery?.("")}
               className="text-sm text-gray-500 hover:text-gray-700"
               title="Xóa"
             >
@@ -82,9 +89,38 @@ export default function ChatSearchPanel({
             </button>
           )}
         </div>
+
+        {/* Filters row (UNDER search box) */}
+        <div className="mt-3">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="shrink-0">Lọc theo:</span>
+
+            <select
+              value={senderFilter || "ALL"}
+              onChange={(e) => setSenderFilter?.(e.target.value)}
+              className="flex-1 h-9 border border-gray-200 rounded-lg px-2 bg-white outline-none"
+            >
+              {(senderOptions || ["ALL"]).map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt === "ALL" ? "Tất cả" : opt === "ME" ? "Bạn" : opt}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={dateFilter || "ALL"}
+              onChange={(e) => setDateFilter?.(e.target.value)}
+              className="w-[120px] h-9 border border-gray-200 rounded-lg px-2 bg-white outline-none"
+            >
+              <option value="ALL">Tất cả</option>
+              <option value="TODAY">Hôm nay</option>
+              <option value="7D">7 ngày</option>
+              <option value="30D">30 ngày</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      {/* Body */}
       <div className="flex-1 overflow-auto px-2 pb-3">
         {!hasQuery ? (
           <div className="px-3 py-10 text-center text-gray-500">
@@ -100,7 +136,7 @@ export default function ChatSearchPanel({
         ) : (
           <div className="px-2">
             <div className="text-xs font-semibold text-gray-600 px-2 py-2">
-              Tin nhắn ({results.length})
+              Tin nhắn ({results?.length || 0})
             </div>
 
             <div className="flex flex-col">
@@ -119,12 +155,12 @@ export default function ChatSearchPanel({
                   </div>
 
                   <div className="text-sm text-gray-700 mt-1 line-clamp-2">
-                    {highlightSnippet(m.text || "", query)}
+                    {highlightSnippet(m.text || "", query || "")}
                   </div>
                 </button>
               ))}
 
-              {results.length > 50 && (
+              {(results?.length || 0) > 50 && (
                 <div className="p-3 text-center text-gray-500 text-sm">
                   (Đang hiển thị 50 kết quả đầu)
                 </div>

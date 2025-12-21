@@ -14,6 +14,11 @@ import {
 import { addMessage, initChat, setHistory } from "../redux/slices/chatSlice";
 import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
 import { setListUser } from "../redux/slices/listUserSlice";
+import {
+  buildSenderOptions,
+  filterBySender,
+  filterByDate,
+} from "../utils/chatSearchUtils";
 
 const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
@@ -37,12 +42,15 @@ export default function useChatLogic({
   // ---------- DATA ----------
   const chatKey = makeChatKeyFromActive(activeChat);
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [senderFilter, setSenderFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState("ALL");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const messageRefs = useRef({});
   const norm = (s = "") => String(s).toLowerCase();
   const messages = useSelector(
     chatKey ? selectMessagesByChatKey(chatKey) : () => []
   );
+  const now = Date.now();
 
   const matchedMessages = useMemo(() => {
     const q = norm(messageSearchQuery).trim();
@@ -55,9 +63,25 @@ export default function useChatLogic({
     [matchedMessages]
   );
 
+  const senderOptions = useMemo(() => {
+    return buildSenderOptions(messages || []);
+  }, [messages]);
+
+  const filteredResults = useMemo(() => {
+    return (matchedMessages || []).filter(
+      (m) => filterBySender(m, senderFilter) && filterByDate(m, dateFilter)
+    );
+  }, [matchedMessages, senderFilter, dateFilter]);
+
   useEffect(() => {
     setActiveMatchIndex(0);
   }, [messageSearchQuery, chatKey]);
+
+  useEffect(() => {
+    setMessageSearchQuery("");
+    setSenderFilter("ALL");
+    setDateFilter("ALL");
+  }, [chatKey]);
 
   const scrollToMatchById = (id) => {
     if (!id) return;
@@ -134,10 +158,12 @@ export default function useChatLogic({
 
       const mapHistoryMessage = (m) => {
         const parsed = tryParseCustomPayload(m.mes);
+        const ts = m.createAt ? Date.parse(m.createAt) : 0;
         return {
           id: m.id ?? Date.now() + Math.random(),
           text: parsed ? parsed.text : m.mes || "",
           sender: m.name === currentUser ? "user" : "other",
+          actionTime: Number.isNaN(ts) ? 0 : ts,
           time: formatVNDateTime(m.createAt),
           type: parsed?.type || m.messageType || "text",
           from: m.name,
@@ -201,10 +227,11 @@ export default function useChatLogic({
       addMessage({
         chatKey,
         message: {
-          id: `local-${Date.now()}`,
+          id: `local-${now}`,
           text,
           sender: "user",
-          time: formatVNDateTime(),
+          actionTime: now,
+          time: formatVNDateTime(now),
           type: hasEmoji(text) ? "emoji" : "text",
           from: currentUser,
           to: activeChat.name,
@@ -266,10 +293,10 @@ export default function useChatLogic({
         addMessage({
           chatKey,
           message: {
-            id: `local-${Date.now()}`,
+            id: `local-${now}`,
             text: captionText,
             sender: "user",
-            time: formatVNDateTime(),
+            time: formatVNDateTime(now),
             type,
             from: currentUser,
             to: activeChat.name,
@@ -317,9 +344,9 @@ export default function useChatLogic({
         addMessage({
           chatKey,
           message: {
-            id: `local-${Date.now()}`,
+            id: `local-${now}`,
             sender: "user",
-            time: formatVNDateTime(),
+            time: formatVNDateTime(now),
             type: "audio",
             from: currentUser,
             to: activeChat.name,
@@ -356,9 +383,9 @@ export default function useChatLogic({
       addMessage({
         chatKey,
         message: {
-          id: `local-${Date.now()}`,
+          id: `local-${now}`,
           sender: "user",
-          time: formatVNDateTime(),
+          time: formatVNDateTime(now),
           type: "sticker",
           from: currentUser,
           to: activeChat.name,
@@ -391,9 +418,9 @@ export default function useChatLogic({
       addMessage({
         chatKey,
         message: {
-          id: `local-${Date.now()}`,
+          id: `local-${now}`,
           sender: "user",
-          time: formatVNDateTime(),
+          time: formatVNDateTime(now),
           type: "gif",
           from: currentUser,
           to: activeChat.name,
@@ -438,6 +465,16 @@ export default function useChatLogic({
 
     messageSearchQuery,
     setMessageSearchQuery,
+    senderFilter,
+    setSenderFilter,
+    dateFilter,
+    setDateFilter,
+
+    senderOptions,
+    matchedMessages,
+    filteredResults,
+
+    messageRefs,
     matchedMessages,
     matchIds,
     activeMatchIndex,

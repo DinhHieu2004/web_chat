@@ -63,14 +63,21 @@ export default function ChatContainer() {
             onClose={() => {
               chat.closeSearchPanel();
               chat.setMessageSearchQuery("");
+              chat.setSenderFilter("ALL");
+              chat.setDateFilter("ALL");
             }}
             query={chat.messageSearchQuery}
             setQuery={chat.setMessageSearchQuery}
-            results={chat.matchedMessages}
+            results={chat.filteredResults}
             activeChatName={activeChat?.name}
             onPickMessage={(id) => {
               chat.scrollToMatchById(id);
             }}
+            senderFilter={chat.senderFilter}
+            setSenderFilter={chat.setSenderFilter}
+            dateFilter={chat.dateFilter}
+            setDateFilter={chat.setDateFilter}
+            senderOptions={chat.senderOptions}
           />
         </div>
       </div>
