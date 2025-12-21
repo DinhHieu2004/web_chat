@@ -23,13 +23,16 @@ export default function ChatArea({
       <MessageList
         messages={messages}
         messagesEndRef={messagesEndRef}
-        activeChat={activeChat}
+        activeChat={activeChat} onReply={handlers.startReply}
       />
 
       <ChatInput
         input={input}
         setInput={setInput}
         handlers={handlers}
+        replyMsg={handlers.replyMsg}
+        clearReply={handlers.clearReply}
+        getMessagePreview ={handlers.getMessagePreview }
         showEmojiPicker={showEmojiPicker}
         toggleEmojiPicker={toggleEmojiPicker}
         {...rest}

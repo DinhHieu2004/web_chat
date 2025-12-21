@@ -1,13 +1,13 @@
 import React from "react";
 import MessageItem from "./MessageItem";
 
-export default function MessageList({ messages, messagesEndRef, activeChat }) {
+export default function MessageList({ messages, messagesEndRef, activeChat, onReply }) {
   const isRoom = activeChat?.type === "room";
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4 bg-linear-to-br from-purple-50 to-blue-50">
       {messages.map((m) => (
-        <MessageItem key={m.id} msg={m} isRoom={isRoom} />
+        <MessageItem key={m.id} msg={m} isRoom={isRoom} onReply={onReply} />
       ))}
       <div ref={messagesEndRef} />
     </div>

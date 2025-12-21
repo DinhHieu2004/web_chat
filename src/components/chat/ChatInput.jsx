@@ -1,7 +1,6 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, {useRef, useState, useEffect} from "react";
 import ChatPickerPanel from "./ChatPickerPanel";
 import VoiceRecorder from "./VoiceRecorder";
-
 
 import {
     FaPaperclip,
@@ -11,20 +10,23 @@ import {
     FaPlus,
     FaChartBar,
     FaTimes,
+    FaFileAlt,
     FaMicrophone,
 } from "react-icons/fa";
-import { FaPaperPlane } from "react-icons/fa6";
+import {FaPaperPlane} from "react-icons/fa6";
 
 export default function ChatInput({
-    input,
-    setInput,
-    handlers,
-    toggleGroupMenu,
-    isUploading,
-}) {
+
+                                      input,
+                                      setInput,
+                                      handlers,
+                                      toggleGroupMenu,
+                                      isUploading, replyMsg, clearReply, getMessagePreview
+
+                                  }) {
     const [record, setRecord] = useState(false);
 
-    const { handleSend, handleFileUpload } = handlers;
+    const {handleSend, handleFileUpload} = handlers;
 
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -33,6 +35,9 @@ export default function ChatInput({
     const [activeTab, setActiveTab] = useState("STICKER");
     const pickerPanelRef = useRef(null);
     const pickerBtnRef = useRef(null);
+    const preview = getMessagePreview(replyMsg);
+    const isImageLike = ["image", "gif", "sticker"].includes(preview?.type);
+    const isFile = preview?.type === "file";
 
     const togglePicker = (tab) => {
         setActiveTab(tab);
@@ -131,8 +136,9 @@ export default function ChatInput({
                                 className="w-16 h-16 object-cover rounded border border-gray-200"
                             />
                         ) : (
-                            <div className="w-16 h-16 bg-gray-200 rounded border border-gray-300 flex items-center justify-center">
-                                <FaPaperclip className="text-gray-500" size={24} />
+                            <div
+                                className="w-16 h-16 bg-gray-200 rounded border border-gray-300 flex items-center justify-center">
+                                <FaPaperclip className="text-gray-500" size={24}/>
                             </div>
                         )}
 
@@ -151,11 +157,47 @@ export default function ChatInput({
                             title="Xóa file"
                             type="button"
                         >
-                            <FaTimes size={16} />
+                            <FaTimes size={16}/>
                         </button>
                     </div>
                 </div>
             )}
+            {replyMsg && (
+                <div
+                    className="flex items-center justify-between px-3 py-2 mb-2 bg-gray-100 border-l-4 border-purple-500 rounded">
+                    <div className="text-xs text-gray-700 min-w-0">
+                        <span
+                            className="font-semibold">Trả lời {replyMsg.sender === "user" ? "Bạn" : replyMsg.from}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                            {preview?.url && isImageLike && (
+                                <img src={preview.url} className="max-w-12 max-h-10 rounded object-contain"/>
+                            )}
+                            {preview?.url && preview.type === "video" && (
+                                <video src={preview.url} className="max-w-12 max-h-10 rounded object-contain"/>
+                            )}
+
+                            {!preview?.url && (
+                                <span className="italic truncate">{preview?.text || preview?.fileName || preview?.type}</span>
+                            )}
+                            {isFile && (
+                                <span className="flex items-center gap-1 italic truncate">
+                                        <FaFileAlt className="shrink-0" />
+                                    <span className="truncate">{preview.fileName || "Tệp đính kèm"}</span>
+                                </span>
+                            )}
+
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={clearReply}
+                        className="ml-2 text-gray-400 hover:text-red-500"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
 
             {/* Input area */}
             <div className="px-4 py-3">
@@ -168,7 +210,7 @@ export default function ChatInput({
                             disabled={isUploading}
                             type="button"
                         >
-                            <FaPlus size={18} />
+                            <FaPlus size={18}/>
                         </button>
 
                         <button
@@ -178,7 +220,7 @@ export default function ChatInput({
                             disabled={isUploading}
                             type="button"
                         >
-                            <FaPaperclip size={18} />
+                            <FaPaperclip size={18}/>
                         </button>
 
                         <button
@@ -188,7 +230,7 @@ export default function ChatInput({
                             disabled={isUploading}
                             type="button"
                         >
-                            <FaImage size={18} />
+                            <FaImage size={18}/>
                         </button>
 
                         <div className="relative flex items-center gap-1">
@@ -200,7 +242,7 @@ export default function ChatInput({
                                 disabled={isUploading}
                                 type="button"
                             >
-                                <FaChartBar size={18} />
+                                <FaChartBar size={18}/>
                             </button>
 
                             <button
@@ -210,7 +252,7 @@ export default function ChatInput({
                                 disabled={isUploading}
                                 type="button"
                             >
-                                <FaSmile size={18} />
+                                <FaSmile size={18}/>
                             </button>
 
                             <button
@@ -220,7 +262,7 @@ export default function ChatInput({
                                 disabled={isUploading}
                                 type="button"
                             >
-                                <FaMicrophone size={18} />
+                                <FaMicrophone size={18}/>
                             </button>
 
                             <div className="absolute right-0 bottom-full mb-2 z-50">
@@ -244,6 +286,7 @@ export default function ChatInput({
                             </div>
                         </div>
                     </div>
+
 
                     {/* <input
             type="text"
@@ -303,7 +346,7 @@ export default function ChatInput({
                         title="Gửi"
                         type="button"
                     >
-                        <FaPaperPlane size={18} />
+                        <FaPaperPlane size={18}/>
                     </button>
                 </div>
 
