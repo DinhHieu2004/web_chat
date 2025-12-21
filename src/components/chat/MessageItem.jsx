@@ -1,57 +1,6 @@
 import React from "react";
 import {FaUserCircle, FaFileAlt, FaReply} from "react-icons/fa";
 
-// <<<<<<< HEAD
-// const tryParseCustomPayload = (text) => {
-//     if (!text || typeof text !== "string") return null;
-
-//     if (!text.startsWith("{")) return null;
-
-//     try {
-//         const parsed = JSON.parse(text);
-
-//         if (parsed && parsed.customType) {
-//             return {
-//                 type: parsed.customType,
-//                 url: parsed.url || null,
-//                 text: parsed.text || "",
-//                 fileName: parsed.fileName || null,
-//                 meta: parsed.meta || null,
-//             };
-//         }
-
-//         if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
-//             const emojiText = parsed.cps
-//                 .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
-//                 .join("");
-
-//             return {
-//                 type: "emoji",
-//                 url: null,
-//                 text: emojiText,
-//                 fileName: null,
-//                 meta: parsed.meta || null,
-//             };
-//         }
-//     } catch (e) {
-//         return null;
-//     }
-
-//     return null;
-// };
-
-// export default function MessageItem({msg, onReply}) {
-//     const isMe = msg.sender === "user";
-
-//     const parsedFromText = tryParseCustomPayload(msg.text);
-//     const finalType = parsedFromText?.type || msg.type || "text";
-//     const finalUrl = parsedFromText?.url || msg.url || null;
-//     const finalText = parsedFromText?.text ?? msg.text ?? "";
-//     const finalFileName = parsedFromText?.fileName || msg.fileName || null;
-
-//     const replyMeta = msg.meta?.reply;
-// =======
-
 export default function MessageItem({msg, onReply}) {
     const isMe = msg.sender === "user";
     const finalType = msg.type || "text";
@@ -59,6 +8,16 @@ export default function MessageItem({msg, onReply}) {
     const finalText = msg.text || "";
     const finalFileName = msg.fileName || null;
     const replyMeta = msg.meta?.reply;
+    const normalizeReplyPreview = (reply) => {
+        if (!reply?.preview) return null;
+
+        if (typeof reply.preview === "object") {
+            return reply.preview;
+        }
+        return {
+            text: reply.preview,
+        };
+    };
 
     const renderContent = () => (
         <div className="flex flex-col gap-2">
@@ -150,23 +109,46 @@ export default function MessageItem({msg, onReply}) {
                             : "bg-gray-100 text-gray-900"
                     }`}
                 >
-                    {replyMeta && (
-                        <div
-                            className={`mb-2 px-2 py-1 rounded border-l-4 text-xs ${
-                                isMe
-                                    ? "bg-white/20 border-white/50"
-                                    : "bg-gray-200 border-purple-500"
-                            }`}
-                        >
-                            <div className="font-semibold truncate">
-                                Trả lời {replyMeta.sender === "user" ? "Bạn" : replyMeta.from}
-                            </div>
+                    {replyMeta && (() => {
+                        const preview = normalizeReplyPreview(replyMeta);
 
-                            <div className="opacity-80 truncate">
-                                {replyMeta.preview}
+                        return (
+                            <div
+                                className={`mb-2 px-2 py-1 rounded border-l-4 text-xs ${
+                                    isMe
+                                        ? "bg-white/20 border-white/50"
+                                        : "bg-gray-200 border-purple-500"
+                                }`}
+                            >
+                                <div className="font-semibold truncate">
+                                    Trả lời {replyMeta.from === msg.from ? "Bạn" : replyMeta.from}
+                                </div>
+
+                                {preview?.url && (
+                                    <>
+                                        {["image", "gif", "sticker"].includes(preview.type) && (
+                                            <img src={preview.url} className="mt-1 max-w-20 max-h-20 object-contain rounded"/>
+                                        )}
+
+                                        {preview.type === "video" && (
+                                            <video src={preview.url} className="mt-1 max-w-24 max-h-16 rounded" muted/>
+                                        )}
+                                        {preview?.type === "file" && (
+                                            <div className="mt-1 flex items-center gap-1 truncate">
+                                                <FaFileAlt className="shrink-0" />
+                                                <span className="truncate">{preview.fileName || "Tệp đính kèm"}</span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                                {!preview?.url && preview?.text && (
+                                    <div className="opacity-80 truncate">
+                                        {preview.text}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
                     {renderContent()}
                 </div>
                 <button
