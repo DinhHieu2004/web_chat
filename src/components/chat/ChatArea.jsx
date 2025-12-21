@@ -13,17 +13,20 @@ export default function ChatArea({
 
   showEmojiPicker,
   toggleEmojiPicker,
+  toggleSearchPanel,
+  messageRefs,
 
   ...rest
 }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <ChatHeader activeChat={activeChat} />
+      <ChatHeader activeChat={activeChat} onOpenSearch={toggleSearchPanel} />
 
       <MessageList
         messages={messages}
         messagesEndRef={messagesEndRef}
         activeChat={activeChat}
+        messageRefs={messageRefs}
       />
 
       <ChatInput
