@@ -154,7 +154,7 @@ export const extractMessageText = (msg) => {
     if (typeof msg.text === "string" && msg.text.trim().startsWith("{")) {
         try {
             const parsed = JSON.parse(msg.text);
-            return parsed.text || parsed.customType || parsed.type || "";
+            return parsed.text || parsed.fileName || "";
         } catch {
             return msg.text;
         }
@@ -163,14 +163,44 @@ export const extractMessageText = (msg) => {
     return msg.text || msg.type || "";
 };
 export const getMessagePreview = (msg) => {
-    return extractMessageText(msg);
-};
-export const getPurePreview = (msg) => {
-    if (!msg) return "";
+    if (!msg) return null;
 
-    if (msg?.meta?.reply?.preview) {
-        return msg.meta.reply.preview;
+    return {
+        type: msg.type,
+        text: msg.text,
+        url: msg.url,
+        fileName: msg.fileName,
+    };
+};
+
+export const getPurePreview = (msg, messageMap) => {
+    if (!msg) return null;
+
+    const reply = msg?.meta?.reply;
+    if (!reply) {
+        return {
+            type: "text",
+            text: extractMessageText(msg),
+        };
     }
 
-    return extractMessageText(msg);
+    if (reply.preview && typeof reply.preview === "object") {
+        return reply.preview;
+    }
+    const origin = messageMap?.[reply.msgId];
+
+    if (origin) {
+        return {
+            type: origin.type,
+            text: origin.text,
+            url: origin.url,
+            fileName: origin.fileName,
+        };
+    }
+
+    if (typeof reply.preview === "string") {
+        return { type: reply.preview };
+    }
+
+    return { type: "text", text: "" };
 };

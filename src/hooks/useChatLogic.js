@@ -184,6 +184,17 @@ export default function useChatLogic({
             return mes;
         }
     };
+    const buildReplyMeta = () => {
+        if (!replyMsg) return null;
+        return {
+            reply: {
+                msgId: replyMsg.id,
+                from: replyMsg.from,
+                type: replyMsg.type,
+                preview: getMessagePreview(replyMsg),
+            },
+        };
+    };
     const handleSend = () => {
         if (!activeChat) return;
 
@@ -201,16 +212,6 @@ export default function useChatLogic({
                 mes: mes,
             })
         );
-        const replyMeta = replyMsg
-            ? {
-                reply: {
-                    msgId: replyMsg.id,
-                    from: replyMsg.from,
-                    type: replyMsg.type,
-                    preview: getMessagePreview(replyMsg),
-                },
-            }
-            : null;
         dispatch(
             addMessage({
                 chatKey,
@@ -223,11 +224,10 @@ export default function useChatLogic({
                     from: currentUser,
                     to: activeChat.name,
                     optimistic: true,
-                    meta: replyMeta,
+                    meta: buildReplyMeta(),
                 },
             })
         );
-
         dispatch(
             setListUser({
                 name: activeChat.name,
@@ -260,12 +260,14 @@ export default function useChatLogic({
                         ? "audio"
                         : "file";
 
-            const payloadText = JSON.stringify({
-                customType: type,
-                url,
-                text: captionText,
-                fileName: file.name,
-            });
+            const payloadText = attachReplyMeta(
+                JSON.stringify({
+                    customType: type,
+                    url,
+                    text: captionText,
+                    fileName: file.name,
+                })
+            );
 
             setInput("");
 
@@ -292,9 +294,19 @@ export default function useChatLogic({
                         url,
                         fileName: file.name,
                         optimistic: true,
+                        meta: buildReplyMeta(),
                     },
                 })
             );
+            dispatch(
+                setListUser({
+                    name: activeChat.name,
+                    lastMessage: captionText,
+                    actionTime: Date.now(),
+                    type: activeChat.type,
+                })
+            );
+            setReplyMsg(null);
         } finally {
             setIsUploading(false);
         }
@@ -314,12 +326,13 @@ export default function useChatLogic({
             const url = await uploadFileToS3(audioFile);
             if (!url) return;
 
-            const payloadText = JSON.stringify({
-                customType: "audio",
-                url,
-                fileName,
-            });
-
+            const payloadText = attachReplyMeta(
+                JSON.stringify({
+                    customType: "audio",
+                    url,
+                    fileName,
+                })
+            );
             chatSocketServer.send(
                 "SEND_CHAT",
                 makeOutgoingPayload({
@@ -342,9 +355,19 @@ export default function useChatLogic({
                         url,
                         fileName,
                         optimistic: true,
+                        meta: buildReplyMeta(),
                     },
                 })
             );
+            dispatch(
+                setListUser({
+                    name: activeChat.name,
+                    lastMessage: fileName,
+                    actionTime: Date.now(),
+                    type: activeChat.type,
+                })
+            );
+            setReplyMsg(null);
         } finally {
             setIsUploading(false);
         }
@@ -353,11 +376,13 @@ export default function useChatLogic({
     const handleSendSticker = (sticker) => {
         if (!activeChat || !sticker?.url) return;
 
-        const payloadText = JSON.stringify({
-            customType: "sticker",
-            stickerId: sticker.id,
-            url: sticker.url,
-        });
+        const payloadText = attachReplyMeta(
+            JSON.stringify({
+                customType: "sticker",
+                stickerId: sticker.id,
+                url: sticker.url,
+            })
+        );
 
         chatSocketServer.send(
             "SEND_CHAT",
@@ -380,19 +405,31 @@ export default function useChatLogic({
                     to: activeChat.name,
                     url: sticker.url,
                     optimistic: true,
+                    meta: buildReplyMeta(),
                 },
             })
         );
+        dispatch(
+            setListUser({
+                name: activeChat.name,
+                lastMessage: activeChat.type,
+                actionTime: Date.now(),
+                type: activeChat.type,
+            })
+        );
+        setReplyMsg(null);
     };
 
     const handleSendGif = (gif) => {
         if (!activeChat || !gif?.url) return;
 
-        const payloadText = JSON.stringify({
-            customType: "gif",
-            gifId: gif.id,
-            url: gif.url,
-        });
+        const payloadText = attachReplyMeta(
+            JSON.stringify({
+                customType: "gif",
+                gifId: gif.id,
+                url: gif.url,
+            })
+        );
 
         chatSocketServer.send(
             "SEND_CHAT",
@@ -415,9 +452,19 @@ export default function useChatLogic({
                     to: activeChat.name,
                     url: gif.url,
                     optimistic: true,
+                    meta: buildReplyMeta(),
                 },
             })
         );
+        dispatch(
+            setListUser({
+                name: activeChat.name,
+                lastMessage: activeChat.type,
+                actionTime: Date.now(),
+                type: activeChat.type,
+            })
+        );
+        setReplyMsg(null);
     };
 
     const loadHistory = (page = 1, chat = activeChat) => {
