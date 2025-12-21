@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
 import {
   tryParseCustomPayload,
-  parseCustomMessage,
   buildEmojiMessage,
   makeOutgoingPayload,
   makeChatKeyFromActive,
@@ -12,17 +11,11 @@ import {
   makeChatKeyFromWs,
 } from "../utils/chatDataFormatter";
 
-import {
-  addMessage,
-  initChat,
-  setHistory,
-} from "../redux/slices/chatSlice";
+import { addMessage, initChat, setHistory } from "../redux/slices/chatSlice";
 import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
 import { setListUser } from "../redux/slices/listUserSlice";
 
-const hasEmoji = (s = "") =>
-  /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
-
+const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
 export default function useChatLogic({
   activeChat,
@@ -38,15 +31,59 @@ export default function useChatLogic({
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
+  const [showSearchPanel, setShowSearchPanel] = useState(false);
+  const toggleSearchPanel = () => setShowSearchPanel((v) => !v);
+  const closeSearchPanel = () => setShowSearchPanel(false);
   // ---------- DATA ----------
   const chatKey = makeChatKeyFromActive(activeChat);
-
-
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const messageRefs = useRef({});
+  const norm = (s = "") => String(s).toLowerCase();
   const messages = useSelector(
-  chatKey ? selectMessagesByChatKey(chatKey) : () => []
-);
+    chatKey ? selectMessagesByChatKey(chatKey) : () => []
+  );
 
+  const matchedMessages = useMemo(() => {
+    const q = norm(messageSearchQuery).trim();
+    if (!q) return [];
+    return (messages || []).filter((m) => norm(m?.text || "").includes(q));
+  }, [messages, messageSearchQuery]);
+
+  const matchIds = useMemo(
+    () => matchedMessages.map((m) => m.id),
+    [matchedMessages]
+  );
+
+  useEffect(() => {
+    setActiveMatchIndex(0);
+  }, [messageSearchQuery, chatKey]);
+
+  const scrollToMatchById = (id) => {
+    if (!id) return;
+    const el = messageRefs.current?.[id];
+    if (el?.scrollIntoView)
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const scrollToMatchIndex = (idx) => {
+    if (!matchIds.length) return;
+    const safeIdx = Math.max(0, Math.min(idx, matchIds.length - 1));
+    setActiveMatchIndex(safeIdx);
+    scrollToMatchById(matchIds[safeIdx]);
+  };
+
+  const gotoNextMatch = () => {
+    if (!matchIds.length) return;
+    const next = (activeMatchIndex + 1) % matchIds.length;
+    scrollToMatchIndex(next);
+  };
+
+  const gotoPrevMatch = () => {
+    if (!matchIds.length) return;
+    const prev = (activeMatchIndex - 1 + matchIds.length) % matchIds.length;
+    scrollToMatchIndex(prev);
+  };
 
   const messagesEndRef = useRef(null);
 
@@ -78,7 +115,7 @@ export default function useChatLogic({
           chatKey: incomingKey,
           message: {
             id: Date.now() + Math.random(),
-            text: parsed? parsed.text : m.mes || "",
+            text: parsed ? parsed.text : mes || "",
             sender: "other",
             time: formatVNDateTime(),
             type: parsed?.type || "text",
@@ -99,7 +136,7 @@ export default function useChatLogic({
         const parsed = tryParseCustomPayload(m.mes);
         return {
           id: m.id ?? Date.now() + Math.random(),
-          text: parsed? parsed.text : m.mes || "",
+          text: parsed ? parsed.text : m.mes || "",
           sender: m.name === currentUser ? "user" : "other",
           time: formatVNDateTime(m.createAt),
           type: parsed?.type || m.messageType || "text",
@@ -126,10 +163,7 @@ export default function useChatLogic({
         dispatch(
           setHistory({
             chatKey: `group:${data.name}`,
-            messages: data.chatData
-              .slice()
-              .reverse()
-              .map(mapHistoryMessage),
+            messages: data.chatData.slice().reverse().map(mapHistoryMessage),
           })
         );
       }
@@ -145,7 +179,6 @@ export default function useChatLogic({
       chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
     };
   }, [currentUser, dispatch]);
-
 
   const handleSend = () => {
     if (!activeChat) return;
@@ -196,7 +229,6 @@ export default function useChatLogic({
     if (!activeChat || !file) return;
     const captionText = input.trim();
 
-
     setIsUploading(true);
 
     try {
@@ -204,11 +236,11 @@ export default function useChatLogic({
       if (!url) return;
 
       const ext = file.name.split(".").pop()?.toLowerCase();
-      const type = ["jpg","jpeg","png","gif","webp"].includes(ext)
+      const type = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
         ? "image"
-        : ["mp4","webm"].includes(ext)
+        : ["mp4", "webm"].includes(ext)
         ? "video"
-        : ["mp3","wav","ogg","webm"].includes(ext)
+        : ["mp3", "wav", "ogg", "webm"].includes(ext)
         ? "audio"
         : "file";
 
@@ -400,6 +432,20 @@ export default function useChatLogic({
     showEmojiPicker,
     showStickerPicker,
     showGroupMenu,
+    showSearchPanel,
+    toggleSearchPanel,
+    closeSearchPanel,
+
+    messageSearchQuery,
+    setMessageSearchQuery,
+    matchedMessages,
+    matchIds,
+    activeMatchIndex,
+    gotoNextMatch,
+    gotoPrevMatch,
+    scrollToMatchById,
+
+    messageRefs,
     toggleEmojiPicker: () => setShowEmojiPicker((v) => !v),
     toggleStickerPicker: () => setShowStickerPicker((v) => !v),
     toggleGroupMenu: () => setShowGroupMenu((v) => !v),
