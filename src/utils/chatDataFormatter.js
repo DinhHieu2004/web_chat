@@ -123,8 +123,7 @@ export const tryParseCustomPayload = (text) => {
                 fileName: parsed.fileName || null,
                 meta: parsed.meta || null,
             };
-    } catch (_) {
-    }
+    } catch (_) {}
 
     return null;
 };
