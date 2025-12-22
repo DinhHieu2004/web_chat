@@ -47,6 +47,9 @@ export default function ChatContainer() {
             setInput={chat.setInput}
             handlers={chat.handlers}
             messagesEndRef={chat.messagesEndRef}
+            replyMsg={chat.replyMsg}
+            clearReply={chat.clearReply}
+            getMessagePreview={chat.getMessagePreview}
             showSearchPanel={chat.showSearchPanel}
             toggleSearchPanel={chat.toggleSearchPanel}
             messageSearchQuery={chat.messageSearchQuery}

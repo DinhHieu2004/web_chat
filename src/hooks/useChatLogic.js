@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
+
 import {
   tryParseCustomPayload,
   buildEmojiMessage,
@@ -9,11 +10,14 @@ import {
   makeChatKeyFromActive,
   formatVNDateTime,
   makeChatKeyFromWs,
+  getMessagePreview,
+  getPurePreview,
 } from "../utils/chatDataFormatter";
 
-import { addMessage, initChat, setHistory } from "../redux/slices/chatSlice";
+import { addMessage, setHistory } from "../redux/slices/chatSlice";
 import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
 import { setListUser } from "../redux/slices/listUserSlice";
+
 import {
   buildSenderOptions,
   filterBySender,
@@ -36,24 +40,35 @@ export default function useChatLogic({
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // reply
+  const [replyMsg, setReplyMsg] = useState(null);
+  const clearReply = () => setReplyMsg(null);
+
+  // search panel
   const [showSearchPanel, setShowSearchPanel] = useState(false);
   const toggleSearchPanel = () => setShowSearchPanel((v) => !v);
   const closeSearchPanel = () => setShowSearchPanel(false);
+
   // ---------- DATA ----------
   const chatKey = makeChatKeyFromActive(activeChat);
-  const [messageSearchQuery, setMessageSearchQuery] = useState("");
-  const [senderFilter, setSenderFilter] = useState("ALL");
-  const [dateFilter, setDateFilter] = useState("ALL");
-  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
-  const messageRefs = useRef({});
-  const norm = (s = "") => String(s).toLowerCase();
+
   const messages = useSelector(
     chatKey ? selectMessagesByChatKey(chatKey) : () => []
   );
-  const now = Date.now();
+
+  // search query + filters
+  const norm = (s = "") => String(s).toLowerCase().trim();
+  const [messageSearchQuery, setMessageSearchQuery] = useState("");
+  const [senderFilter, setSenderFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState("ALL");
+
+  // match index + refs (scroll to message)
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
+  const messageRefs = useRef({});
 
   const matchedMessages = useMemo(() => {
-    const q = norm(messageSearchQuery).trim();
+    const q = norm(messageSearchQuery);
     if (!q) return [];
     return (messages || []).filter((m) => norm(m?.text || "").includes(q));
   }, [messages, messageSearchQuery]);
@@ -116,37 +131,34 @@ export default function useChatLogic({
   }, [messages]);
 
   useEffect(() => {
-    const onIncoming = (payload) => {
-      const d = payload?.data?.data || payload?.data || payload || {};
-      const { type, to, mes } = d;
-      const from = d.from ?? d.name;
-      if (!mes || from === currentUser) return;
+    const onIncoming = (data) => {
+      const { from, to, mes } = data || {};
 
-      const incomingKey = makeChatKeyFromWs({
-        type,
-        from,
-        to,
-        currentUser,
-      });
-      if (!incomingKey) return;
+      const parsed = tryParseCustomPayload(
+        typeof mes === "string" ? mes : mes?.mes
+      );
 
-      dispatch(initChat(incomingKey));
+      const incomingKey = makeChatKeyFromWs({ from, to, currentUser });
 
-      const parsed = tryParseCustomPayload(mes);
+      const now = Date.now();
+      const rawText =
+        typeof mes === "string" ? mes : mes?.mes ?? mes?.text ?? "";
 
       dispatch(
         addMessage({
           chatKey: incomingKey,
           message: {
-            id: Date.now() + Math.random(),
-            text: parsed ? parsed.text : mes || "",
+            id: now + Math.random(),
+            text: parsed ? parsed.text : rawText || "",
             sender: "other",
-            time: formatVNDateTime(),
+            actionTime: now,
+            time: formatVNDateTime(now),
             type: parsed?.type || "text",
             from,
             to,
             url: parsed?.url || null,
             fileName: parsed?.fileName || null,
+            meta: parsed?.meta || null,
           },
         })
       );
@@ -157,19 +169,25 @@ export default function useChatLogic({
       if (status !== "success") return;
 
       const mapHistoryMessage = (m) => {
-        const parsed = tryParseCustomPayload(m.mes);
-        const ts = m.createAt ? Date.parse(m.createAt) : 0;
+        const parsed = tryParseCustomPayload(m?.mes);
+
+        const ts = m?.createAt ? Date.parse(m.createAt) : 0;
+        const actionTime = Number.isNaN(ts) ? 0 : ts;
+
         return {
-          id: m.id ?? Date.now() + Math.random(),
-          text: parsed ? parsed.text : m.mes || "",
-          sender: m.name === currentUser ? "user" : "other",
-          actionTime: Number.isNaN(ts) ? 0 : ts,
-          time: formatVNDateTime(m.createAt),
-          type: parsed?.type || m.messageType || "text",
-          from: m.name,
-          to: m.to,
-          url: parsed?.url || m.url || null,
+          id: m?.id ?? (actionTime || Date.now() + Math.random()),
+          text: parsed ? parsed.text : m?.mes || "",
+          sender: m?.name === currentUser ? "user" : "other",
+
+          actionTime,
+          time: formatVNDateTime(m?.createAt || actionTime || Date.now()),
+
+          type: parsed?.type || m?.messageType || "text",
+          from: m?.name,
+          to: m?.to,
+          url: parsed?.url || m?.url || null,
           fileName: parsed?.fileName || null,
+          meta: parsed?.meta || null,
         };
       };
 
@@ -205,51 +223,49 @@ export default function useChatLogic({
       chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
     };
   }, [currentUser, dispatch]);
+  const startReply = (msg) => {
+    setReplyMsg(msg);
+  };
+  const attachReplyMeta = (mes) => {
+    if (!replyMsg) return mes;
 
-  const handleSend = () => {
-    if (!activeChat) return;
+    const replyMeta = {
+      reply: {
+        msgId: replyMsg.id,
+        from: replyMsg.from,
+        type: replyMsg.type,
+        preview: getMessagePreview(replyMsg),
+      },
+    };
 
-    const text = input.trim();
-    if (!text) return;
+    if (typeof mes === "string" && !mes.startsWith("{")) {
+      return JSON.stringify({
+        customType: "text",
+        text: mes,
+        meta: replyMeta,
+      });
+    }
 
-    const mes = hasEmoji(text) ? buildEmojiMessage(text) : text;
-
-    chatSocketServer.send(
-      "SEND_CHAT",
-      makeOutgoingPayload({
-        type: activeChat.type,
-        to: activeChat.name,
-        mes,
-      })
-    );
-
-    dispatch(
-      addMessage({
-        chatKey,
-        message: {
-          id: `local-${now}`,
-          text,
-          sender: "user",
-          actionTime: now,
-          time: formatVNDateTime(now),
-          type: hasEmoji(text) ? "emoji" : "text",
-          from: currentUser,
-          to: activeChat.name,
-          optimistic: true,
-        },
-      })
-    );
-
-    dispatch(
-      setListUser({
-        name: activeChat.name,
-        lastMessage: text,
-        actionTime: Date.now(),
-        type: activeChat.type,
-      })
-    );
-
-    setInput("");
+    try {
+      const parsed = JSON.parse(mes);
+      return JSON.stringify({
+        ...parsed,
+        meta: replyMeta,
+      });
+    } catch {
+      return mes;
+    }
+  };
+  const buildReplyMeta = () => {
+    if (!replyMsg) return null;
+    return {
+      reply: {
+        msgId: replyMsg.id,
+        from: replyMsg.from,
+        type: replyMsg.type,
+        preview: getMessagePreview(replyMsg),
+      },
+    };
   };
 
   const handleFileUpload = async (file) => {
@@ -271,12 +287,14 @@ export default function useChatLogic({
         ? "audio"
         : "file";
 
-      const payloadText = JSON.stringify({
-        customType: type,
-        url,
-        text: captionText,
-        fileName: file.name,
-      });
+      const payloadText = attachReplyMeta(
+        JSON.stringify({
+          customType: type,
+          url,
+          text: captionText,
+          fileName: file.name,
+        })
+      );
 
       setInput("");
 
@@ -289,6 +307,7 @@ export default function useChatLogic({
         })
       );
 
+      const now = Date.now();
       dispatch(
         addMessage({
           chatKey,
@@ -296,6 +315,7 @@ export default function useChatLogic({
             id: `local-${now}`,
             text: captionText,
             sender: "user",
+            actionTime: now,
             time: formatVNDateTime(now),
             type,
             from: currentUser,
@@ -303,12 +323,71 @@ export default function useChatLogic({
             url,
             fileName: file.name,
             optimistic: true,
+            meta: buildReplyMeta?.() || null,
           },
         })
       );
+      dispatch(
+        setListUser({
+          name: activeChat.name,
+          lastMessage: captionText,
+          actionTime: now,
+          type: activeChat.type,
+        })
+      );
+      setReplyMsg(null);
     } finally {
       setIsUploading(false);
     }
+  };
+  const handleSend = () => {
+    if (!activeChat) return;
+
+    const text = input.trim();
+    if (!text) return;
+
+    let mes = hasEmoji(text) ? buildEmojiMessage(text) : text;
+    mes = attachReplyMeta(mes);
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes,
+      })
+    );
+
+    const now = Date.now();
+    dispatch(
+      addMessage({
+        chatKey,
+        message: {
+          id: `local-${now}`,
+          text,
+          sender: "user",
+          actionTime: now,
+          time: formatVNDateTime(now),
+          type: hasEmoji(text) ? "emoji" : "text",
+          from: currentUser,
+          to: activeChat.name,
+          optimistic: true,
+          meta: buildReplyMeta?.() || null,
+        },
+      })
+    );
+
+    dispatch(
+      setListUser({
+        name: activeChat.name,
+        lastMessage: text,
+        actionTime: now,
+        type: activeChat.type,
+      })
+    );
+
+    setReplyMsg(null);
+    setInput("");
   };
 
   const handleSendVoice = async (audioBlob) => {
@@ -325,11 +404,13 @@ export default function useChatLogic({
       const url = await uploadFileToS3(audioFile);
       if (!url) return;
 
-      const payloadText = JSON.stringify({
-        customType: "audio",
-        url,
-        fileName,
-      });
+      const payloadText = attachReplyMeta(
+        JSON.stringify({
+          customType: "audio",
+          url,
+          fileName,
+        })
+      );
 
       chatSocketServer.send(
         "SEND_CHAT",
@@ -340,12 +421,14 @@ export default function useChatLogic({
         })
       );
 
+      const now = Date.now();
       dispatch(
         addMessage({
           chatKey,
           message: {
             id: `local-${now}`,
             sender: "user",
+            actionTime: now,
             time: formatVNDateTime(now),
             type: "audio",
             from: currentUser,
@@ -353,9 +436,21 @@ export default function useChatLogic({
             url,
             fileName,
             optimistic: true,
+            meta: buildReplyMeta?.() || null,
           },
         })
       );
+
+      dispatch(
+        setListUser({
+          name: activeChat.name,
+          lastMessage: "[Voice]",
+          actionTime: now,
+          type: activeChat.type,
+        })
+      );
+
+      setReplyMsg(null);
     } finally {
       setIsUploading(false);
     }
@@ -364,11 +459,13 @@ export default function useChatLogic({
   const handleSendSticker = (sticker) => {
     if (!activeChat || !sticker?.url) return;
 
-    const payloadText = JSON.stringify({
-      customType: "sticker",
-      stickerId: sticker.id,
-      url: sticker.url,
-    });
+    const payloadText = attachReplyMeta(
+      JSON.stringify({
+        customType: "sticker",
+        stickerId: sticker.id,
+        url: sticker.url,
+      })
+    );
 
     chatSocketServer.send(
       "SEND_CHAT",
@@ -379,31 +476,38 @@ export default function useChatLogic({
       })
     );
 
+    const now = Date.now();
     dispatch(
       addMessage({
         chatKey,
         message: {
           id: `local-${now}`,
           sender: "user",
+          actionTime: now,
           time: formatVNDateTime(now),
           type: "sticker",
           from: currentUser,
           to: activeChat.name,
           url: sticker.url,
           optimistic: true,
+          meta: buildReplyMeta?.() || null,
         },
       })
     );
+
+    setReplyMsg(null);
   };
 
   const handleSendGif = (gif) => {
     if (!activeChat || !gif?.url) return;
 
-    const payloadText = JSON.stringify({
-      customType: "gif",
-      gifId: gif.id,
-      url: gif.url,
-    });
+    const payloadText = attachReplyMeta(
+      JSON.stringify({
+        customType: "gif",
+        gifId: gif.id,
+        url: gif.url,
+      })
+    );
 
     chatSocketServer.send(
       "SEND_CHAT",
@@ -414,21 +518,26 @@ export default function useChatLogic({
       })
     );
 
+    const now = Date.now();
     dispatch(
       addMessage({
         chatKey,
         message: {
           id: `local-${now}`,
           sender: "user",
+          actionTime: now,
           time: formatVNDateTime(now),
           type: "gif",
           from: currentUser,
           to: activeChat.name,
           url: gif.url,
           optimistic: true,
+          meta: buildReplyMeta?.() || null,
         },
       })
     );
+
+    setReplyMsg(null);
   };
 
   const loadHistory = (page = 1, chat = activeChat) => {
@@ -456,6 +565,7 @@ export default function useChatLogic({
     setSearchTerm,
     messagesEndRef,
     isUploading,
+
     showEmojiPicker,
     showStickerPicker,
     showGroupMenu,
@@ -469,23 +579,26 @@ export default function useChatLogic({
     setSenderFilter,
     dateFilter,
     setDateFilter,
-
     senderOptions,
     matchedMessages,
     filteredResults,
 
     messageRefs,
-    matchedMessages,
     matchIds,
     activeMatchIndex,
     gotoNextMatch,
     gotoPrevMatch,
     scrollToMatchById,
 
-    messageRefs,
     toggleEmojiPicker: () => setShowEmojiPicker((v) => !v),
     toggleStickerPicker: () => setShowStickerPicker((v) => !v),
     toggleGroupMenu: () => setShowGroupMenu((v) => !v),
+
+    replyMsg,
+    clearReply,
+    getPurePreview,
+    getMessagePreview,
+
     handlers: {
       handleSend,
       handleFileUpload,
@@ -494,6 +607,7 @@ export default function useChatLogic({
       handleSendGif,
       handleChatSelect,
       loadHistory,
+      startReply,
     },
   };
 }

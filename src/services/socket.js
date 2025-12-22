@@ -115,7 +115,7 @@ class ChatSocketServer {
 
     this.heartbeatInterval = setInterval(() => {
       if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        this.send(HEARTBEAT_ACTION, {});
+        // this.send(HEARTBEAT_ACTION, {});
       } else {
         this.stopHeartbeat();
       }
