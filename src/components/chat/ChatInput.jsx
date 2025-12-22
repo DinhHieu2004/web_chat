@@ -273,7 +273,7 @@ export default function ChatInput({
                 <FaMicrophone size={18} />
               </button>
 
-              <div className="absolute right-0 bottom-full mb-2 z-50">
+              <div className="fixed left-55 bottom-15 z-9999">
                 <ChatPickerPanel
                   open={showPicker}
                   panelRef={pickerPanelRef}
