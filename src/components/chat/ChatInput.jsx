@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import ChatPickerPanel from "./ChatPickerPanel";
 import VoiceRecorder from "./VoiceRecorder";
+import { FONTS } from "../../data/fontList";
 
 import {
   FaPaperclip,
@@ -39,8 +40,11 @@ export default function ChatInput({
   const preview = getMessagePreview(replyMsg);
   const isImageLike = ["image", "gif", "sticker"].includes(preview?.type);
   const isFile = preview?.type === "file";
+  const [richMode, setRichMode] = useState(false);
+  const editorRef = useRef(null);
 
-  const togglePicker = (tab) => {
+
+    const togglePicker = (tab) => {
     setActiveTab(tab);
     setShowPicker((prev) => !prev);
   };
@@ -258,12 +262,16 @@ export default function ChatInput({
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
                 title="Emoji"
                 disabled={isUploading}
-                type="button"
-              >
+                type="button">
                 <FaSmile size={18} />
               </button>
+                <button onClick={() => {setRichMode((v) => !v); setRecord(false)}}
+                    className={`p-2 rounded-full ${richMode ? "bg-purple-100 text-purple-600" : "text-gray-600"}`}
+                    title="Chữ kiểu" type="button">Aa
+                </button>
 
-              <button
+
+                <button
                 onClick={() => setRecord(true)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
                 title="Voice"
@@ -294,6 +302,19 @@ export default function ChatInput({
               </div>
             </div>
           </div>
+            <div className="flex-1" />
+              <button
+                  onClick={selectedFile ? handleSendWithFile : handleSend}
+                  disabled={isUploading || (!input.trim() && !selectedFile)}
+                  className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Gửi"
+                  type="button"
+              >
+                  <FaPaperPlane size={18} />
+              </button>
+          </div>
+
+
 
           {/* <input
             type="text"
@@ -320,40 +341,96 @@ export default function ChatInput({
             disabled={isUploading}
           /> */}
 
-          {record ? (
-            <VoiceRecorder
-              onCancel={() => setRecord(false)}
-              onSend={(audioB) => {
-                handlers.handleSendVoice(audioB);
-                setRecord(false);
-              }}
-            />
-          ) : (
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Nhập tin nhắn..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-full"
-              disabled={isUploading}
-            />
-          )}
+            {record ? (
+                <VoiceRecorder
+                    onCancel={() => setRecord(false)}
+                    onSend={(audioB) => {
+                        handlers.handleSendVoice(audioB);
+                        setRecord(false);
+                    }}
+                />
+            ) : richMode ? (
+                <div
+                    ref={editorRef}
+                    contentEditable
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none"
+                    data-placeholder="Nhập tin nhắn..."
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendRich();
+                        }
+                    }}
+                />
+            ) : (
+                <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSend();
+                        }
+                    }}
+                    placeholder="Nhập tin nhắn..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-full"
+                    disabled={isUploading}
+                />
+            )}
 
-          <button
-            onClick={selectedFile ? handleSendWithFile : handleSend}
-            disabled={isUploading || (!input.trim() && !selectedFile)}
-            className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Gửi"
-            type="button"
-          >
-            <FaPaperPlane size={18} />
-          </button>
+            {richMode && !record && (
+                <div className="flex items-center gap-2 mt-2 pt-2 text-sm">
+                    <button
+                        type="button"
+                        onClick={() => document.execCommand("bold")}
+                        className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 font-bold"
+                    >
+                        B
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => document.execCommand("italic")}
+                        className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 italic"
+                    >
+                        I
+                    </button>
+
+                    <input
+                        type="color"
+                        className="w-8 h-8 p-0 border border-gray-300 rounded cursor-pointer"
+                        onChange={(e) =>
+                            document.execCommand("foreColor", false, e.target.value)
+                        }
+                    />
+
+                    <select
+                        className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50"
+                        onChange={(e) =>
+                            document.execCommand("fontSize", false, e.target.value)
+                        }
+                    >
+                        <option value="3">Normal</option>
+                        <option value="4">Large</option>
+                        <option value="5">XL</option>
+                    </select>
+                    <div className="overflow-x-auto">
+                        <div className="flex gap-2 w-max px-1">
+                            {FONTS.map((item) => (
+                                <button
+                                    key={item.font} type="button" style={{ fontFamily: item.font }}
+                                    className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 flex-shrink-0"
+                                    onClick={() => document.execCommand("fontName", false, item.font)}
+                                    title={item.font}>
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                </div>
+            )}
         </div>
 
         {/* Upload progress */}
@@ -363,7 +440,6 @@ export default function ChatInput({
             <span>Đang tải file lên...</span>
           </div>
         )}
-      </div>
     </div>
   );
 }
