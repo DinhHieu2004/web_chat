@@ -7,6 +7,7 @@ export default function MessageList({
   activeChat,
   messageRefs,
   onReply,
+  onForward,
 }) {
   const isRoom = activeChat?.type === "room";
 

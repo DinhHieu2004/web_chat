@@ -28,6 +28,7 @@ export default function ChatArea({
         activeChat={activeChat}
         messageRefs={messageRefs}
         onReply={handlers.startReply}
+        onForward={handlers.startForward}
       />
 
       <ChatInput

@@ -2,6 +2,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { setActiveChat } from "../../redux/slices/listUserSlice";
 import ChatSearchPanel from "./ChatSearchPanel";
+import ForwardMessageModal from "./ForwardMessageModal";
 
 import Sidebar from "../sidebar/Sidebar";
 import ChatArea from "./ChatArea";
@@ -59,6 +60,14 @@ export default function ChatContainer() {
             gotoNextMatch={chat.gotoNextMatch}
             gotoPrevMatch={chat.gotoPrevMatch}
             messageRefs={chat.messageRefs}
+          />
+
+          <ForwardMessageModal
+            open={chat.showForwardModal}
+            onClose={chat.handlers.closeForward}
+            onSend={chat.handlers.handleConfirmForward}
+            contacts={chat.contacts}
+            messagePreview={chat.getPurePreview?.(chat.forwardMsg) || ""}
           />
 
           <ChatSearchPanel
