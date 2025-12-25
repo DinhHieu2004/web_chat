@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
+import { buildForwardMessage } from "../utils/chatDataFormatter";
 
 import {
   tryParseCustomPayload,
@@ -87,6 +88,48 @@ export default function useChatLogic({
       (m) => filterBySender(m, senderFilter) && filterByDate(m, dateFilter)
     );
   }, [matchedMessages, senderFilter, dateFilter]);
+
+  // foward
+  const [forwardMsg, setForwardMsg] = useState(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const contacts = useSelector((state) => state?.listUser?.list || []);
+
+  const startForward = (msg) => {
+    setForwardMsg(msg);
+    setShowForwardModal(true);
+  };
+
+  const closeForward = () => {
+    setForwardMsg(null);
+    setShowForwardModal(false);
+  };
+
+  const handleConfirmForward = ({ selectedMap, note }) => {
+    if (!forwardMsg) return;
+
+    const payloadText = buildForwardMessage({
+      originMsg: forwardMsg,
+      originChat: activeChat,
+      note,
+    });
+
+    const keys = Object.keys(selectedMap || {}).filter((k) => selectedMap[k]);
+    keys.forEach((k) => {
+      const [type, name] = k.split(":");
+      if (!type || !name) return;
+
+      chatSocketServer.send(
+        "SEND_CHAT",
+        makeOutgoingPayload({
+          type: type === "room" ? "room" : "people",
+          to: name,
+          mes: payloadText,
+        })
+      );
+    });
+
+    closeForward();
+  };
 
   useEffect(() => {
     setActiveMatchIndex(0);
@@ -599,6 +642,10 @@ export default function useChatLogic({
     getPurePreview,
     getMessagePreview,
 
+    contacts,
+    forwardMsg,
+    showForwardModal,
+
     handlers: {
       handleSend,
       handleFileUpload,
@@ -608,6 +655,9 @@ export default function useChatLogic({
       handleChatSelect,
       loadHistory,
       startReply,
+      startForward,
+      closeForward,
+      handleConfirmForward,
     },
   };
 }
