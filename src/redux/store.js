@@ -11,8 +11,7 @@ export const store = configureStore({
         listUser: listUReducer,
         chat: chatReducer,
     },
-    // Middleware để cho phép Redux xử lý các đối tượng không thể serializable như WebSocket object
-    // Mặc dù ta đã tách socket ra khỏi state, việc này vẫn nên làm.
+
     middleware: (getDefaultMiddleware) => 
         getDefaultMiddleware({
             serializableCheck: false,
