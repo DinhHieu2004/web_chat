@@ -2,6 +2,7 @@ import React from "react";
 import ChatHeader from "./ChatHeader";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
+import PollCreator from "./PollCreator";
 
 export default function ChatArea({
   activeChat,
@@ -10,12 +11,13 @@ export default function ChatArea({
   setInput,
   handlers,
   messagesEndRef,
-
+  showGroupMenu,
+  toggleGroupMenu,
   showEmojiPicker,
   toggleEmojiPicker,
+  isGroupChat,
   toggleSearchPanel,
   messageRefs,
-
   ...rest
 }) {
   return (
@@ -29,7 +31,18 @@ export default function ChatArea({
         messageRefs={messageRefs}
         onReply={handlers.startReply}
         onForward={handlers.startForward}
+        onVote={handlers?.handleSendPollVote}
       />
+
+      {showGroupMenu && isGroupChat && (
+        <PollCreator
+          onClose={toggleGroupMenu}
+          onCreate={({ question, options }) => {
+            handlers.handleSendPoll(question, options);
+            toggleGroupMenu();
+          }}
+        />
+      )}
 
       <ChatInput
         input={input}
@@ -40,6 +53,8 @@ export default function ChatArea({
         getMessagePreview={handlers.getMessagePreview}
         showEmojiPicker={showEmojiPicker}
         toggleEmojiPicker={toggleEmojiPicker}
+        isGroupChat={isGroupChat}
+        toggleGroupMenu={toggleGroupMenu}
         {...rest}
       />
     </div>

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
 import { buildForwardMessage } from "../utils/chatDataFormatter";
-
+import { usePollActions } from "./handleSendPoll";
 import {
   tryParseCustomPayload,
   buildEmojiMessage,
@@ -13,6 +13,7 @@ import {
   makeChatKeyFromWs,
   getMessagePreview,
   getPurePreview,
+  hasEmoji,
 } from "../utils/chatDataFormatter";
 
 import { addMessage, setHistory } from "../redux/slices/chatSlice";
@@ -25,7 +26,6 @@ import {
   filterByDate,
 } from "../utils/chatSearchUtils";
 
-const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
 export default function useChatLogic({
   activeChat,
@@ -53,6 +53,12 @@ export default function useChatLogic({
 
   // ---------- DATA ----------
   const chatKey = makeChatKeyFromActive(activeChat);
+ 
+  const { handleSendPoll, handleSendPollVote } = usePollActions({
+    activeChat,
+    chatKey,
+    currentUser,
+  });
 
   const messages = useSelector(
     chatKey ? selectMessagesByChatKey(chatKey) : () => []
@@ -325,10 +331,10 @@ export default function useChatLogic({
       const type = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
         ? "image"
         : ["mp4", "webm"].includes(ext)
-        ? "video"
-        : ["mp3", "wav", "ogg", "webm"].includes(ext)
-        ? "audio"
-        : "file";
+          ? "video"
+          : ["mp3", "wav", "ogg", "webm"].includes(ext)
+            ? "audio"
+            : "file";
 
       const payloadText = attachReplyMeta(
         JSON.stringify({
@@ -658,6 +664,8 @@ export default function useChatLogic({
       startForward,
       closeForward,
       handleConfirmForward,
+      handleSendPoll,
+      handleSendPollVote,
     },
   };
 }

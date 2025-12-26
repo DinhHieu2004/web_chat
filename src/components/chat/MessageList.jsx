@@ -8,6 +8,7 @@ export default function MessageList({
   messageRefs,
   onReply,
   onForward,
+  onVote,
 }) {
   const isRoom = activeChat?.type === "room";
 
@@ -22,7 +23,13 @@ export default function MessageList({
             else delete messageRefs.current[m.id];
           }}
         >
-          <MessageItem msg={m} isRoom={isRoom} onReply={onReply} onForward={onForward} />
+          <MessageItem
+            msg={m}
+            isRoom={isRoom}
+            onReply={onReply}
+            onForward={onForward}
+            onVote={onVote}
+          />
         </div>
       ))}
       <div ref={messagesEndRef} />

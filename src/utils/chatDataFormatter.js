@@ -1,3 +1,7 @@
+import { v4 as uuidv4 } from "uuid";
+
+export const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
+
 export const makeOutgoingPayload = ({ type, to, mes }) => {
   let wsType;
 
@@ -10,10 +14,39 @@ export const makeOutgoingPayload = ({ type, to, mes }) => {
     return null;
   }
 
+  return { type: wsType, to, mes };
+};
+
+export const buildPollMessage = (question, options) => {
+  if (!question || !Array.isArray(options) || options.length < 2) return null;
+
   return {
-    type: wsType,
-    to,
-    mes,
+    customType: "poll",
+    payload: {
+      pollId: uuidv4(),
+      question,
+      options: options.map((o) => ({
+        id: uuidv4(),
+        text: o,
+        votes: 0,
+      })),
+      voteUserNames: [],
+      createdAt: Date.now(),
+    },
+  };
+};
+
+export const buildPollVote = (pollId, optionId, userName) => {
+  if (!pollId || !optionId || !userName) return null;
+
+  return {
+    customType: "poll_vote",
+    payload: {
+      pollId,
+      optionId,
+      userName,
+      votedAt: Date.now(),
+    },
   };
 };
 
@@ -40,10 +73,7 @@ export const formatVNDateTime = (isoLike) => {
 
 export const makeChatKeyFromWs = ({ type, from, to, currentUser }) => {
   const isRoom = type === "room" || type === 1;
-
-  if (isRoom) {
-    return to ? `group:${to}` : null;
-  }
+  if (isRoom) return to ? `group:${to}` : null;
 
   const otherUser = from === currentUser ? to : from;
   return otherUser ? `user:${otherUser}` : null;
@@ -55,16 +85,24 @@ export const parseCustomMessage = (mes) => {
 
   try {
     const parsed = JSON.parse(mes);
+    if (parsed?.customType === "poll" && parsed?.payload) {
+      return {
+        type: "poll",
+        poll: parsed.payload,
+      };
+    }
 
     if (parsed?.customType && parsed?.url) {
       return {
         type: parsed.customType,
-        text: parsed.text || "",
+        text: typeof parsed.text === "string" ? parsed.text : "",
         url: parsed.url,
         fileName: parsed.fileName || null,
+        meta: parsed.meta || null,
       };
     }
 
+    // emoji
     if (parsed?.customType === "emoji" && Array.isArray(parsed.cps)) {
       const text = parsed.cps
         .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
@@ -75,6 +113,17 @@ export const parseCustomMessage = (mes) => {
         text,
         url: null,
         fileName: null,
+        meta: parsed.meta || null,
+      };
+    }
+
+    if (parsed?.customType === "forward") {
+      return {
+        type: "forward",
+        text: typeof parsed.text === "string" ? parsed.text : "",
+        url: parsed.url || null,
+        fileName: parsed.fileName || null,
+        meta: parsed.meta || null,
       };
     }
   } catch (e) {
@@ -91,6 +140,14 @@ export const tryParseCustomPayload = (text) => {
   try {
     const parsed = JSON.parse(text);
     const ct = parsed?.customType;
+
+    if (ct === "poll" && parsed?.payload) {
+      return {
+        type: "poll",
+        poll: parsed.payload,
+      };
+    }
+
     if (ct === "emoji" && Array.isArray(parsed?.cps)) {
       const emojiText = parsed.cps
         .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
@@ -104,6 +161,8 @@ export const tryParseCustomPayload = (text) => {
         meta: parsed.meta || null,
       };
     }
+
+  
     if (ct === "forward") {
       return {
         type: "forward",
@@ -113,6 +172,7 @@ export const tryParseCustomPayload = (text) => {
         meta: parsed.meta || null,
       };
     }
+
     if (ct) {
       return {
         type: ct,
@@ -120,13 +180,13 @@ export const tryParseCustomPayload = (text) => {
         text: typeof parsed.text === "string" ? parsed.text : "",
         fileName: parsed.fileName || null,
         meta: parsed.meta || null,
+        poll: parsed.payload || null, 
       };
     }
   } catch (_) {}
 
   return null;
 };
-
 
 export const buildEmojiMessage = (text) => {
   const cps = Array.from(text).map((ch) =>
@@ -161,6 +221,7 @@ export const extractMessageText = (msg) => {
 
   return msg.text || msg.type || "";
 };
+
 export const getMessagePreview = (msg) => {
   if (!msg) return null;
 
@@ -186,8 +247,8 @@ export const getPurePreview = (msg, messageMap) => {
   if (reply.preview && typeof reply.preview === "object") {
     return reply.preview;
   }
-  const origin = messageMap?.[reply.msgId];
 
+  const origin = messageMap?.[reply.msgId];
   if (origin) {
     return {
       type: origin.type,
@@ -231,14 +292,13 @@ export const previewToText = (msg) => {
   }
 };
 
-
 export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
-  const p = getMessagePreview(originMsg); 
+  const p = getMessagePreview(originMsg);
   const previewText = previewToText(originMsg);
 
   return JSON.stringify({
     customType: "forward",
-    text: previewText,
+    text: previewText, 
     url: p?.url || null,
     fileName: p?.fileName || null,
     meta: {
@@ -258,4 +318,3 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
     },
   });
 };
-
