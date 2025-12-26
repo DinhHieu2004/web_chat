@@ -8,14 +8,35 @@ export default function ForwardMessageModal({
   messagePreview,
 }) {
   const [q, setQ] = useState("");
-  const [selected, setSelected] = useState({}); 
+  const [selected, setSelected] = useState({});
   const [note, setNote] = useState("");
+
+  const resetState = () => {
+    setQ("");
+    setSelected({});
+    setNote("");
+  };
+
+  const handleClose = () => {
+    resetState();
+    onClose?.();
+  };
+
+  const handleSend = () => {
+    onSend?.({ selectedMap: selected, note });
+    resetState();
+    onClose?.();
+  };
 
   const items = useMemo(() => {
     const keyword = (q || "").toLowerCase().trim();
     const base = Array.isArray(contacts) ? contacts : [];
     if (!keyword) return base;
-    return base.filter((c) => String(c?.name || "").toLowerCase().includes(keyword));
+    return base.filter((c) =>
+      String(c?.name || "")
+        .toLowerCase()
+        .includes(keyword)
+    );
   }, [contacts, q]);
 
   const selectedList = useMemo(
@@ -23,13 +44,45 @@ export default function ForwardMessageModal({
     [items, selected]
   );
 
+  const normalizePreviewText = (preview) => {
+    if (!preview) return "";
+
+    if (typeof preview === "string") return preview;
+
+    if (typeof preview === "object") {
+      if (preview.text) return preview.text;
+      if (preview.fileName) return preview.fileName;
+
+      switch (preview.type) {
+        case "image":
+          return "[Hình ảnh]";
+        case "gif":
+          return "[GIF]";
+        case "sticker":
+          return "[Sticker]";
+        case "video":
+          return "[Video]";
+        case "audio":
+          return "[Ghi âm]";
+        case "file":
+          return "[Tệp đính kèm]";
+        default:
+          return "[Tin nhắn]";
+      }
+    }
+
+    return "";
+  };
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white w-[520px] max-w-[92vw] rounded-lg shadow-lg overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
-          <div className="font-semibold text-gray-800">Chuyển tiếp tin nhắn</div>
+          <div className="font-semibold text-gray-800">
+            Chuyển tiếp tin nhắn
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -44,7 +97,7 @@ export default function ForwardMessageModal({
           <div className="border rounded-lg p-3 bg-gray-50 text-sm">
             <div className="text-gray-500 mb-1">Nội dung</div>
             <div className="text-gray-800 line-clamp-3">
-              {messagePreview || "(Không có nội dung)"}
+              {normalizePreviewText(messagePreview) || "(Không có nội dung)"}
             </div>
           </div>
 
@@ -56,7 +109,11 @@ export default function ForwardMessageModal({
               className="flex-1 outline-none text-sm"
             />
             {q?.trim() && (
-              <button type="button" onClick={() => setQ("")} className="text-sm text-gray-500">
+              <button
+                type="button"
+                onClick={() => setQ("")}
+                className="text-sm text-gray-500"
+              >
                 Xóa
               </button>
             )}
@@ -79,7 +136,9 @@ export default function ForwardMessageModal({
                     }
                   />
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-800">{c.name}</div>
+                    <div className="text-sm font-medium text-gray-800">
+                      {c.name}
+                    </div>
                     <div className="text-xs text-gray-500">
                       {c.type === "room" ? "Nhóm" : "Cá nhân"}
                     </div>
@@ -88,7 +147,9 @@ export default function ForwardMessageModal({
               );
             })}
             {!items.length && (
-              <div className="p-3 text-sm text-gray-500">Không tìm thấy kết quả.</div>
+              <div className="p-3 text-sm text-gray-500">
+                Không tìm thấy kết quả.
+              </div>
             )}
           </div>
 
@@ -103,7 +164,7 @@ export default function ForwardMessageModal({
         <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded"
           >
             Hủy
@@ -111,7 +172,7 @@ export default function ForwardMessageModal({
           <button
             type="button"
             disabled={Object.values(selected).every((v) => !v)}
-            onClick={() => onSend?.({ selectedMap: selected, note })}
+            onClick={() => handleSend?.({ selectedMap: selected, note })}
             className="px-4 py-2 rounded text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300"
           >
             Gửi

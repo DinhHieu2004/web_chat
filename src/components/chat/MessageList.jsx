@@ -22,7 +22,7 @@ export default function MessageList({
             else delete messageRefs.current[m.id];
           }}
         >
-          <MessageItem msg={m} isRoom={isRoom} onReply={onReply} />
+          <MessageItem msg={m} isRoom={isRoom} onReply={onReply} onForward={onForward} />
         </div>
       ))}
       <div ref={messagesEndRef} />

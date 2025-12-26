@@ -90,18 +90,8 @@ export const tryParseCustomPayload = (text) => {
 
   try {
     const parsed = JSON.parse(text);
-
-    if (parsed?.customType && parsed?.url) {
-      return {
-        type: parsed.customType,
-        url: parsed.url,
-        text: parsed.text || "",
-        fileName: parsed.fileName || null,
-        meta: parsed.meta || null,
-      };
-    }
-
-    if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+    const ct = parsed?.customType;
+    if (ct === "emoji" && Array.isArray(parsed?.cps)) {
       const emojiText = parsed.cps
         .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
         .join("");
@@ -114,17 +104,29 @@ export const tryParseCustomPayload = (text) => {
         meta: parsed.meta || null,
       };
     }
-    return {
-      type: parsed.customType,
-      url: parsed.url,
-      text: parsed.text || "",
-      fileName: parsed.fileName || null,
-      meta: parsed.meta || null,
-    };
+    if (ct === "forward") {
+      return {
+        type: "forward",
+        url: parsed.url || null,
+        text: typeof parsed.text === "string" ? parsed.text : "",
+        fileName: parsed.fileName || null,
+        meta: parsed.meta || null,
+      };
+    }
+    if (ct) {
+      return {
+        type: ct,
+        url: parsed.url || null,
+        text: typeof parsed.text === "string" ? parsed.text : "",
+        fileName: parsed.fileName || null,
+        meta: parsed.meta || null,
+      };
+    }
   } catch (_) {}
 
   return null;
 };
+
 
 export const buildEmojiMessage = (text) => {
   const cps = Array.from(text).map((ch) =>
@@ -202,21 +204,58 @@ export const getPurePreview = (msg, messageMap) => {
   return { type: "text", text: "" };
 };
 
+export const previewToText = (msg) => {
+  const p = getMessagePreview(msg);
+  if (!p) return "";
+
+  if (typeof p.text === "string" && p.text.trim()) return p.text;
+  if (typeof p.fileName === "string" && p.fileName.trim()) return p.fileName;
+
+  switch (p.type) {
+    case "image":
+      return "[Hình ảnh]";
+    case "gif":
+      return "[GIF]";
+    case "sticker":
+      return "[Sticker]";
+    case "video":
+      return "[Video]";
+    case "audio":
+      return "[Ghi âm]";
+    case "file":
+      return "[Tệp đính kèm]";
+    case "emoji":
+      return "[Emoji]";
+    default:
+      return "[Tin nhắn]";
+  }
+};
+
+
 export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
-  const forwardMeta = {
-    forward: {
-      fromChat: originChat?.name || "",
-      fromType: originChat?.type || "",
-      originalFrom: originMsg?.from || "",
-      originalType: originMsg?.type || "text",
-      preview: getMessagePreview(originMsg),
-      note: note || "",
-    },
-  };
+  const p = getMessagePreview(originMsg); 
+  const previewText = previewToText(originMsg);
 
   return JSON.stringify({
     customType: "forward",
-    text: getPurePreview(originMsg) || "",
-    meta: forwardMeta,
+    text: previewText,
+    url: p?.url || null,
+    fileName: p?.fileName || null,
+    meta: {
+      forward: {
+        fromChat: originChat?.name || "",
+        fromType: originChat?.type || "",
+        originalFrom: originMsg?.from || "",
+        originalType: originMsg?.type || "text",
+        preview: {
+          type: p?.type || originMsg?.type || "text",
+          text: previewText,
+          url: p?.url || null,
+          fileName: p?.fileName || null,
+        },
+        note: String(note || ""),
+      },
+    },
   });
 };
+

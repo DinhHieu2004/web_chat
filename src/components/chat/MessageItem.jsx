@@ -1,11 +1,14 @@
 import React from "react";
-import { FaUserCircle, FaFileAlt, FaReply } from "react-icons/fa";
+import { FaUserCircle, FaFileAlt, FaReply, FaShare } from "react-icons/fa";
 
-export default function MessageItem({ msg, onReply }) {
+export default function MessageItem({ msg, onReply, onForward }) {
   const isMe = msg.sender === "user";
   const finalType = msg.type || "text";
   const finalUrl = msg.url || null;
-  const finalText = msg.text || "";
+  const finalText =
+    typeof msg.text === "string" ? msg.text : msg.text?.text || "";
+  const safeText =
+    typeof finalText === "string" ? finalText : String(finalText || "");
   const finalFileName = msg.fileName || null;
   const replyMeta = msg.meta?.reply;
   const normalizeReplyPreview = (reply) => {
@@ -75,8 +78,8 @@ export default function MessageItem({ msg, onReply }) {
           {finalFileName || "Tải file"}
         </a>
       )}
-      {finalType !== "emoji" && finalText.trim() && (
-        <p className="text-sm break-words whitespace-pre-wrap">{finalText}</p>
+      {finalType !== "emoji" && safeText.trim() && (
+        <p className="text-sm break-words whitespace-pre-wrap">{safeText}</p>
       )}
     </div>
   );
