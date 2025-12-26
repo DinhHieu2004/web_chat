@@ -81,7 +81,35 @@ export default function MessageItem({ msg, onReply, isRoom, onVote }) {
                         onClick={() => window.open(finalUrl, "_blank")}
                     />
                 )}
-
+                {finalType === "richtext" && msg.rich?.blocks && (
+                    <div className="flex flex-col gap-1">
+                        {msg.rich.blocks.map((block, i) => (
+                            <div key={i} style={{ whiteSpace: "pre-wrap" }}>
+                                {block.spans?.length ? (
+                                    block.spans.map((span, j) => {
+                                        const style = {
+                                            fontWeight: span.styles?.bold ? "bold" : "normal",
+                                            fontStyle: span.styles?.italic ? "italic" : "normal",
+                                            textDecoration: [
+                                                span.styles?.underline ? "underline" : "",
+                                                span.styles?.strike ? "line-through" : ""
+                                            ].filter(Boolean).join(" "),
+                                            fontFamily: span.font || "inherit",
+                                            color: span.color || "inherit",
+                                        };
+                                        return (
+                                            <span key={j} style={style}>
+                {span.text}
+              </span>
+                                        );
+                                    })
+                                ) : (
+                                    <span>{block.text}</span> // fallback khi không có spans
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
                 {finalType === "image" && finalUrl && (
                     <img
                         src={finalUrl}

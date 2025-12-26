@@ -21,13 +21,10 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
         if (!user) return;
 
         const onChat = (payload) => {
-            console.log(payload);
             const d = payload?.data?.data || payload?.data || payload || {};
             const { type, name, to, mes } = d;
             if (!mes) return;
-            console.log(d);
             const key = type === "room" ? to : name === user ? to : name;
-            console.log(key);
             if (!key) return;
 
             dispatch(setListUser({
@@ -74,10 +71,10 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
             }
         };
 
-        chatSocketServer.on("CHECK_USER_ONLINE", onCheckOnline);
+        // chatSocketServer.on("CHECK_USER_ONLINE", onCheckOnline);
 
         return () => {
-            chatSocketServer.off("CHECK_USER_ONLINE", onCheckOnline);
+            // chatSocketServer.off("CHECK_USER_ONLINE", onCheckOnline);
             seqResolverRef.current = null;
         };
     }, [user, dispatch]);
@@ -101,7 +98,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
                     // Install resolver and send request. If no response within timeout, assume offline.
                     seqResolverRef.current = (val) => resolve(!!val);
                     try {
-                        chatSocketServer.send("CHECK_USER_ONLINE", { user: item.name });
+                        // chatSocketServer.send("CHECK_USER_ONLINE", { user: item.name });
                     } catch (e) {
                         seqResolverRef.current = null;
                         resolve(false);

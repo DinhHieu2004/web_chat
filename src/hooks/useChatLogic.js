@@ -12,7 +12,7 @@ import {
   makeChatKeyFromWs,
   getMessagePreview,
   getPurePreview,
-  hasEmoji,
+  hasEmoji, extractRichText,
 } from "../utils/chatDataFormatter";
 
 import { addMessage, setHistory } from "../redux/slices/chatSlice";
@@ -346,6 +346,47 @@ export default function useChatLogic({
       setIsUploading(false);
     }
   };
+    const handleSendRichText = (editorRef) => {
+        const richJson = extractRichText(editorRef);
+        console.log(editorRef)
+        if (!richJson) return;
+
+        console.log("RichText JSON preview:", JSON.stringify(richJson, null, 2));
+
+        if (!activeChat) return;
+
+        const now = Date.now();
+        const mes = richJson;
+
+        dispatch(
+            addMessage({
+                chatKey,
+                message: {
+                    id: `local-${now}`,
+                    text: "",
+                    rich: mes,
+                    sender: "user",
+                    actionTime: now,
+                    time: formatVNDateTime(now),
+                    type: "richtext",
+                    from: currentUser,
+                    to: activeChat.name,
+                    optimistic: true,
+                    meta: buildReplyMeta?.() || null,
+                },
+            })
+        );
+
+        dispatch(
+            setListUser({
+                name: activeChat.name,
+                lastMessage: "[RichText]",
+                actionTime: now,
+                type: activeChat.type,
+            })
+        );
+    };
+
   const handleSend = () => {
     if (!activeChat) return;
 
@@ -542,7 +583,14 @@ export default function useChatLogic({
         },
       })
     );
-
+      dispatch(
+          setListUser({
+              name: activeChat.name,
+              lastMessage: "[GIF]",
+              actionTime: now,
+              type: activeChat.type,
+          })
+      );
     setReplyMsg(null);
   };
 
@@ -616,6 +664,7 @@ export default function useChatLogic({
       startReply,
       handleSendPoll,
       handleSendPollVote,
+        handleSendRichText,
     },
   };
 }
