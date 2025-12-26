@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import {useEffect, useRef} from "react";
 
 export const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
@@ -259,4 +260,49 @@ export const getPurePreview = (msg, messageMap) => {
     }
 
     return { type: "text", text: "" };
+};
+export const extractRichText = (editor, defaultFont = "Arial", defaultColor = "#000000") => {
+    if (!editor) return null;
+
+    const blocks = [];
+    const lines = Array.from(editor.childNodes);
+
+    lines.forEach((lineNode) => {
+        const block = { spans: [] };
+
+        const traverse = (node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.nodeValue;
+                if (!text.trim()) return;
+
+                const parent = node.parentElement || editor;
+                const style = window.getComputedStyle(parent);
+
+                const span = { text };
+                const styles = {};
+
+                if (style.fontWeight === "700") styles.bold = true;
+                if (style.fontStyle === "italic") styles.italic = true;
+                if (style.textDecoration.includes("underline")) styles.underline = true;
+                if (style.textDecoration.includes("line-through")) styles.strike = true;
+                if (Object.keys(styles).length) span.styles = styles;
+
+                const font = style.fontFamily.split(",")[0].trim().replace(/^['"]|['"]$/g, "");
+                if (font !== defaultFont) span.font = font;
+
+                const color = style.color;
+                if (color !== defaultColor) span.color = color;
+
+                block.spans.push(span);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                node.childNodes.forEach(traverse);
+            }
+        };
+
+        traverse(lineNode);
+
+        if (block.spans.length) blocks.push(block);
+    });
+
+    return { blocks };
 };
