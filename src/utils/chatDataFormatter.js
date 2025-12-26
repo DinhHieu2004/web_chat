@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 
+export const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
-export const makeOutgoingPayload = ({type, to, mes}) => {
+export const makeOutgoingPayload = ({ type, to, mes }) => {
     let wsType;
 
     if (type === "room") {
@@ -21,33 +22,33 @@ export const makeOutgoingPayload = ({type, to, mes}) => {
 };
 
 export const buildPollMessage = (question, options) => {
-    if( !question || !Array.isArray(options) || options.length <2 ) return null;
+    if (!question || !Array.isArray(options) || options.length < 2) return null;
 
     return {
-        customType : "poll",
+        customType: "poll",
         payload: {
             pollId: uuidv4(),
             question,
-            options : options.map(o => ({
-                id : uuidv4(),
+            options: options.map(o => ({
+                id: uuidv4(),
                 text: o,
                 votes: 0
             })),
 
-            voteUserNames : [],
-            createdAt : Date.now()
+            voteUserNames: [],
+            createdAt: Date.now()
         }
-       
+
     };
 
 };
 
 export const buildPollVote = (pollId, optionId, userName) => {
-    if(!pollId || !optionId || !userName) return null;
+    if (!pollId || !optionId || !userName) return null;
 
     return {
         customType: "poll_vote",
-        payload :{
+        payload: {
             pollId,
             optionId,
             userName,
@@ -80,7 +81,7 @@ export const formatVNDateTime = (isoLike) => {
 };
 
 
-export const makeChatKeyFromWs = ({type, from, to, currentUser}) => {
+export const makeChatKeyFromWs = ({ type, from, to, currentUser }) => {
     const isRoom = type === "room" || type === 1;
 
     if (isRoom) {
@@ -136,45 +137,52 @@ export const parseCustomMessage = (mes) => {
 };
 
 export const tryParseCustomPayload = (text) => {
-  if (!text || typeof text !== "string") return null;
-  if (text.length < 10 || !text.startsWith("{")) return null;
+    if (!text || typeof text !== "string") return null;
+    if (text.length < 10 || !text.startsWith("{")) return null;
 
-  try {
-    const parsed = JSON.parse(text);
+    try {
+        const parsed = JSON.parse(text);
 
-    // Poll payloads
-    if (parsed?.customType === "poll" && parsed?.payload) {
-      return {
-        customType: "poll",
-        type: "poll",
-        poll: parsed.payload,
-      };
-    }
+        if (parsed?.customType === "poll" && parsed?.payload) {
+            return {
+                customType: "poll",
+                type: "poll",
+                poll: parsed.payload,
+            };
+        }
+        if (parsed?.customType && parsed?.url) {
+            return {
+                type: parsed.customType,
+                url: parsed.url,
+                text: parsed.text || "",
+                fileName: parsed.fileName || null,
+                meta: parsed.meta || null,
+            };
+        }
 
-    if (parsed?.customType && parsed?.url) {
-      return {
-        type: parsed.customType,
-        url: parsed.url,
-        text: parsed.text || "",
-        fileName: parsed.fileName || null,
-      };
-    }
+        if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+            const emojiText = parsed.cps
+                .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+                .join("");
 
-    if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
-      const emojiText = parsed.cps
-        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
-        .join("");
+            return {
+                type: "emoji",
+                url: null,
+                text: emojiText,
+                fileName: null,
+                meta: parsed.meta || null,
+            };
+        }
+        return {
+            type: parsed.customType,
+            url: parsed.url,
+            text: parsed.text || "",
+            fileName: parsed.fileName || null,
+            meta: parsed.meta || null,
+        };
+    } catch (_) { }
 
-      return {
-        type: "emoji",
-        url: null,
-        text: emojiText,
-        fileName: null,
-      };
-    }
-  } catch (_) {}
-
-  return null;
+    return null;
 };
 
 export const buildEmojiMessage = (text) => {
@@ -188,5 +196,67 @@ export const buildEmojiMessage = (text) => {
     });
 };
 
-export const hasEmoji = (s = "") =>
-  /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
+export const extractMessageText = (msg) => {
+    if (!msg) return "";
+
+    if (typeof msg === "string") {
+        try {
+            msg = JSON.parse(msg);
+        } catch {
+            return msg;
+        }
+    }
+
+    if (typeof msg.text === "string" && msg.text.trim().startsWith("{")) {
+        try {
+            const parsed = JSON.parse(msg.text);
+            return parsed.text || parsed.fileName || "";
+        } catch {
+            return msg.text;
+        }
+    }
+
+    return msg.text || msg.type || "";
+};
+export const getMessagePreview = (msg) => {
+    if (!msg) return null;
+
+    return {
+        type: msg.type,
+        text: msg.text,
+        url: msg.url,
+        fileName: msg.fileName,
+    };
+};
+
+export const getPurePreview = (msg, messageMap) => {
+    if (!msg) return null;
+
+    const reply = msg?.meta?.reply;
+    if (!reply) {
+        return {
+            type: "text",
+            text: extractMessageText(msg),
+        };
+    }
+
+    if (reply.preview && typeof reply.preview === "object") {
+        return reply.preview;
+    }
+    const origin = messageMap?.[reply.msgId];
+
+    if (origin) {
+        return {
+            type: origin.type,
+            text: origin.text,
+            url: origin.url,
+            fileName: origin.fileName,
+        };
+    }
+
+    if (typeof reply.preview === "string") {
+        return { type: reply.preview };
+    }
+
+    return { type: "text", text: "" };
+};

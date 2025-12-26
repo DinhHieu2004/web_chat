@@ -113,14 +113,14 @@ class ChatSocketServer {
         if (!this.isAuthed) return;
         this.stopHeartbeat();
 
-        this.heartbeatInterval = setInterval(() => {
-            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                this.send(HEARTBEAT_ACTION, {});
-            } else {
-                this.stopHeartbeat();
-            }
-        }, HEARTBEAT_INTERVAL);
-    }
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        // this.send(HEARTBEAT_ACTION, {});
+      } else {
+        this.stopHeartbeat();
+      }
+    }, HEARTBEAT_INTERVAL);
+  }
 
     stopHeartbeat() {
         if (this.heartbeatInterval) {

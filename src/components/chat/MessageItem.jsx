@@ -1,13 +1,23 @@
 import React from "react";
-import { FaUserCircle, FaFileAlt } from "react-icons/fa";
+import { FaUserCircle, FaFileAlt, FaReply } from "react-icons/fa";
 
-export default function MessageItem({ msg, isRoom, onVote }) {
+export default function MessageItem({ msg, onReply, isRoom, onVote }) {
     const isMe = msg.sender === "user";
-
     const finalType = msg.type || "text";
     const finalUrl = msg.url || null;
     const finalText = msg.text || "";
     const finalFileName = msg.fileName || null;
+    const replyMeta = msg.meta?.reply;
+    const normalizeReplyPreview = (reply) => {
+        if (!reply?.preview) return null;
+
+        if (typeof reply.preview === "object") {
+            return reply.preview;
+        }
+        return {
+            text: reply.preview,
+        };
+    };
 
     const renderContent = () => {
         // Poll rendering
@@ -53,6 +63,7 @@ export default function MessageItem({ msg, isRoom, onVote }) {
                     <div className="text-base leading-none">{finalText}</div>
                 )}
 
+
                 {finalType === "sticker" && finalUrl && (
                     <img
                         src={finalUrl}
@@ -80,6 +91,7 @@ export default function MessageItem({ msg, isRoom, onVote }) {
                     />
                 )}
 
+
                 {finalType === "audio" && finalUrl && (
                     <audio controls className="max-w-xs">
                         <source src={finalUrl} type="audio/webm" />
@@ -103,7 +115,6 @@ export default function MessageItem({ msg, isRoom, onVote }) {
                         {finalFileName || "Tải file"}
                     </a>
                 )}
-
                 {finalType !== "emoji" && finalText.trim() && (
                     <p className="text-sm wrap-break-words whitespace-pre-wrap">
                         {finalText}
@@ -112,8 +123,6 @@ export default function MessageItem({ msg, isRoom, onVote }) {
             </div>
         );
     };
-
-
     return (
         <div className={`flex mb-4 ${isMe ? "justify-end" : "justify-start"}`}>
             {!isMe && (
@@ -122,7 +131,8 @@ export default function MessageItem({ msg, isRoom, onVote }) {
                 </div>
             )}
 
-            <div className="max-w-[70%]">
+            <div className="max-w-[70%] relative group">
+
                 <div
                     className={`text-xs text-gray-500 mb-1 ${isMe ? "text-right" : "text-left"
                         }`}
@@ -136,8 +146,56 @@ export default function MessageItem({ msg, isRoom, onVote }) {
                             : "bg-gray-100 text-gray-900"
                         }`}
                 >
+                    {replyMeta && (() => {
+                        const preview = normalizeReplyPreview(replyMeta);
+
+                        return (
+                            <div
+                                className={`mb-2 px-2 py-1 rounded border-l-4 text-xs ${isMe
+                                        ? "bg-white/20 border-white/50"
+                                        : "bg-gray-200 border-purple-500"
+                                    }`}
+                            >
+                                <div className="font-semibold truncate">
+                                    Trả lời {replyMeta.from === msg.from ? "Bạn" : replyMeta.from}
+                                </div>
+
+                                {preview?.url && (
+                                    <>
+                                        {["image", "gif", "sticker"].includes(preview.type) && (
+                                            <img src={preview.url} className="mt-1 max-w-20 max-h-20 object-contain rounded" />
+                                        )}
+
+                                        {preview.type === "video" && (
+                                            <video src={preview.url} className="mt-1 max-w-24 max-h-16 rounded" muted />
+                                        )}
+                                        {preview?.type === "file" && (
+                                            <div className="mt-1 flex items-center gap-1 truncate">
+                                                <FaFileAlt className="shrink-0" />
+                                                <span className="truncate">{preview.fileName || "Tệp đính kèm"}</span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                                {!preview?.url && preview?.text && (
+                                    <div className="opacity-80 truncate">
+                                        {preview.text}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                     {renderContent()}
                 </div>
+                <button
+                    onClick={() => {
+                        onReply?.(msg);
+                    }}
+                    className={`absolute -bottom-1 ${isMe ? "-left-8" : "-right-8"} opacity-0 group-hover:opacity-100
+                                text-gray-400 hover:text-purple-500 transition p-2`}
+                    title="Trả lời">
+                    <FaReply size={14} />
+                </button>
             </div>
         </div>
     );

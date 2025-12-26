@@ -16,17 +16,21 @@ export default function ChatArea({
     showEmojiPicker,
     toggleEmojiPicker,
     isGroupChat,
+    toggleSearchPanel,
+    messageRefs,
     ...rest
 }) {
     return (
         <div className="flex-1 min-h-0 flex flex-col">
-            <ChatHeader activeChat={activeChat} />
+            <ChatHeader activeChat={activeChat} onOpenSearch={toggleSearchPanel} />
 
             <MessageList
                 messages={messages}
                 messagesEndRef={messagesEndRef}
                 activeChat={activeChat}
                 onVote={handlers?.handleSendPollVote}
+                messageRefs={messageRefs}
+                onReply={handlers.startReply}
             />
 
             {/* POLL CREATOR */}
@@ -44,6 +48,9 @@ export default function ChatArea({
                 input={input}
                 setInput={setInput}
                 handlers={handlers}
+                replyMsg={handlers.replyMsg}
+                clearReply={handlers.clearReply}
+                getMessagePreview={handlers.getMessagePreview}
                 showEmojiPicker={showEmojiPicker}
                 toggleEmojiPicker={toggleEmojiPicker}
                 isGroupChat={isGroupChat}

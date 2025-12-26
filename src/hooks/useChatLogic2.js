@@ -19,12 +19,13 @@ const tryParseCustomPayload = (text) => {
   try {
     const parsed = JSON.parse(text);
 
-    if (parsed?.customType && parsed?.url) {
+    if (parsed?.customType) {
       return {
         type: parsed.customType,
-        url: parsed.url,
+        url: parsed.url || null,
         text: parsed.text || "",
         fileName: parsed.fileName || null,
+          meta: parsed.meta || null,
       };
     }
 
@@ -38,6 +39,7 @@ const tryParseCustomPayload = (text) => {
         url: null,
         text: emojiText,
         fileName: null,
+          meta: parsed.meta || null,
       };
     }
   } catch (_) {}
@@ -56,6 +58,10 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  const [replyMsg, setReplyMsg] = useState(null);
+  const clearReply = () => setReplyMsg(null);
+
+    // const [forwardMsg, setForwardMsg] = useState(null);
   const dispatch = useDispatch();
 
   const messagesEndRef = useRef(null);
@@ -101,6 +107,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
           ...(prev[incomingKey] || []),
           {
             id: Date.now() + Math.random(),
+              raw: mes,
             text: finalText,
             sender: "other",
             time: formatVNDateTime(),
@@ -109,6 +116,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
             to,
             url: finalUrl,
             fileName: finalFileName,
+              meta: fileData?.meta || null,
           },
         ],
       }));
@@ -133,8 +141,10 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
                     to: m.to,
                     url: fileData?.url || m.url || null,
                     fileName: fileData?.fileName || null,
+                    meta: fileData?.meta ?? null,
                 };
             };
+
 
       if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
         const otherUser =
@@ -168,14 +178,83 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
       chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
     };
   }, [currentUser]);
+    const startReply = (msg) => {
+        setReplyMsg(msg);
+    };
+    const extractMessageText = (msg) => {
+        if (!msg) return "";
 
-  const handleSend = () => {
+        if (typeof msg === "string") {
+            try {
+                msg = JSON.parse(msg);
+            } catch {
+                return msg;
+            }
+        }
+
+        if (typeof msg.text === "string" && msg.text.trim().startsWith("{")) {
+            try {
+                const parsed = JSON.parse(msg.text);
+                return parsed.text || parsed.customType || parsed.type || "";
+            } catch {
+                return msg.text;
+            }
+        }
+
+        return msg.text || msg.type || "";
+    };
+    const getMessagePreview = (msg) => {
+        return extractMessageText(msg);
+    };
+    const getPurePreview = (msg) => {
+        if (!msg) return "";
+
+        if (msg?.meta?.reply?.preview) {
+            return msg.meta.reply.preview;
+        }
+
+        return extractMessageText(msg);
+    };
+
+    const attachReplyMeta = (mes) => {
+        if (!replyMsg) return mes;
+
+        const replyMeta = {
+            reply: {
+                msgId: replyMsg.id,
+                from: replyMsg.from,
+                type: replyMsg.type,
+                preview:  getMessagePreview(replyMsg),
+            },
+        };
+
+        if (typeof mes === "string" && !mes.startsWith("{")) {
+            return JSON.stringify({
+                customType: "text",
+                text: mes,
+                meta: replyMeta,
+            });
+        }
+
+        try {
+            const parsed = JSON.parse(mes);
+            return JSON.stringify({
+                ...parsed,
+                meta: replyMeta,
+            });
+        } catch {
+            return mes;
+        }
+    };
+
+    const handleSend = () => {
     if (!activeChat) return;
 
     const text = input.trim();
     if (!text) return;
 
-    const mesToSend = hasEmoji(text) ? buildEmojiMessage(text) : text;
+    let mesToSend = hasEmoji(text) ? buildEmojiMessage(text) : text;
+    mesToSend = attachReplyMeta(mesToSend);
 
     chatSocketServer.send(
       "SEND_CHAT",
@@ -187,7 +266,16 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
     );
 
     const optimisticType = hasEmoji(text) ? "emoji" : "text";
-
+        const replyMeta = replyMsg
+            ? {
+                reply: {
+                    msgId: replyMsg.id,
+                    from: replyMsg.from,
+                    type: replyMsg.type,
+                    preview: getMessagePreview(replyMsg),
+                },
+            }
+            : null;
     setMessagesMap((prev) => ({
       ...prev,
       [chatKey]: [
@@ -201,6 +289,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
           from: currentUser,
           to: activeChat.name,
           optimistic: true,
+            meta: replyMeta,
         },
       ],
     }));
@@ -213,8 +302,9 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
         type: activeChat.type,
       })
     );
+        setReplyMsg(null);
 
-    setInput("");
+        setInput("");
   };
 
   const handleFileUpload = async (file) => {
@@ -237,13 +327,13 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
 
       const captionText = input.trim();
 
-      const payloadText = JSON.stringify({
+      let payloadText = JSON.stringify({
         customType: type,
         url,
         text: captionText,
         fileName: file.name,
       });
-
+      payloadText = attachReplyMeta(payloadText);
       setInput("");
 
       chatSocketServer.send(
@@ -448,7 +538,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
       loadHistory,
       handleFileUpload,
       handleSendSticker,
-      handleSendGif,
+      handleSendGif, startReply, replyMsg, clearReply, getPurePreview, getMessagePreview
     },
   };
 }
