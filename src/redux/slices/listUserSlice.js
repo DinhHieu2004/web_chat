@@ -83,8 +83,15 @@ const listUserSlice = createSlice({
             }
 
             state.list = newList;
-        }
+        },
 
+        setUserOnlineStatus: (state, action) => {
+            const { name, online } = action.payload || {};
+            const index = state.list.findIndex((c) => c.name === name);
+            if (index !== -1) {
+                state.list[index].online = !!online;
+            }
+        },
 
     },
     extraReducers: (builder) => {
@@ -100,6 +107,7 @@ const listUserSlice = createSlice({
                 state.list = raw.map((item) => ({
                     ...item,
                     type: item.type === 1 ? "room" : "people",
+                    online: !!item.online,
                 }));
             })
             .addCase(getList.rejected, (state, action) => {
@@ -114,7 +122,7 @@ const listUserSlice = createSlice({
 
             .addCase(createRoom.fulfilled, (state, action) => {
                 state.loading = false;
-                const room = {...action.payload, type: "room"};
+                const room = {...action.payload, type: "room", online: !!action.payload?.online};
                 if (!state.list.find((c) => c.name === room.name))
                     state.list.unshift(room);
                 state.activeChatId = room.name;
@@ -133,7 +141,7 @@ const listUserSlice = createSlice({
 
             .addCase(joinRoom.fulfilled, (state, action) => {
                 state.loading = false;
-                const room = {...action.payload, type: "room"};
+                const room = {...action.payload, type: "room", online: !!action.payload?.online};
                 if (!state.list.find((c) => c.name === room.name))
                     state.list.unshift(room);
                 state.activeChatId = room.name;
@@ -146,5 +154,5 @@ const listUserSlice = createSlice({
     },
 });
 
-export const {setShowCreateModal, setListUser, setShowJoinModal, setActiveChat} = listUserSlice.actions;
+export const {setShowCreateModal, setListUser, setShowJoinModal, setActiveChat, setUserOnlineStatus} = listUserSlice.actions;
 export default listUserSlice.reducer;

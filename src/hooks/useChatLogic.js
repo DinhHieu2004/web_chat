@@ -20,6 +20,7 @@ import {
 } from "../redux/slices/chatSlice";
 import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
 import { setListUser } from "../redux/slices/listUserSlice";
+import { usePollActions } from "./handleSendPoll";
 
 
 export default function useChatLogic({
@@ -37,14 +38,16 @@ export default function useChatLogic({
     const [showGroupMenu, setShowGroupMenu] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
-    // ---------- DATA ----------
     const chatKey = makeChatKeyFromActive(activeChat);
-
 
     const messages = useSelector(
         chatKey ? selectMessagesByChatKey(chatKey) : () => []
     );
-
+    const { handleSendPoll, handleSendPollVote } = usePollActions({
+        activeChat,
+        chatKey,
+        currentUser,
+    });
 
     const messagesEndRef = useRef(null);
 
@@ -57,6 +60,7 @@ export default function useChatLogic({
             const d = payload?.data?.data || payload?.data || payload || {};
             const { type, to, mes } = d;
             const from = d.from ?? d.name;
+            
             if (!mes || from === currentUser) return;
 
             const incomingKey = makeChatKeyFromWs({
@@ -65,28 +69,48 @@ export default function useChatLogic({
                 to,
                 currentUser,
             });
+            
             if (!incomingKey) return;
 
             dispatch(initChat(incomingKey));
 
             const parsed = tryParseCustomPayload(mes);
 
-            dispatch(
-                addMessage({
-                    chatKey: incomingKey,
-                    message: {
-                        id: Date.now() + Math.random(),
-                        text: parsed ? parsed.text : m.mes || "",
-                        sender: "other",
-                        time: formatVNDateTime(),
-                        type: parsed?.type || "text",
-                        from,
-                        to,
-                        url: parsed?.url || null,
-                        fileName: parsed?.fileName || null,
-                    },
-                })
-            );
+            // If this is a poll payload, handle it as a single poll message
+            if (parsed?.type === "poll") {
+                dispatch(
+                    addMessage({
+                        chatKey: incomingKey,
+                        message: {
+                            id: Date.now() + Math.random(),
+                            type: "poll",
+                            poll: parsed.poll,
+                            sender: "other",
+                            time: formatVNDateTime(),
+                            from,
+                            to,
+                        },
+                    })
+                );
+            } else {
+                // Generic message handling
+                dispatch(
+                    addMessage({
+                        chatKey: incomingKey,
+                        message: {
+                            id: Date.now() + Math.random(),
+                            text: parsed ? parsed.text : d.mes || "",
+                            sender: "other",
+                            time: formatVNDateTime(),
+                            type: parsed?.type || "text",
+                            from,
+                            to,
+                            url: parsed?.url || null,
+                            fileName: parsed?.fileName || null,
+                        },
+                    })
+                );
+            }
         };
 
         const onHistory = (payload) => {
@@ -95,6 +119,20 @@ export default function useChatLogic({
 
             const mapHistoryMessage = (m) => {
                 const parsed = tryParseCustomPayload(m.mes);
+                
+                // Handle poll messages
+                if (parsed?.customType === "poll") {
+                    return {
+                        id: m.id ?? Date.now() + Math.random(),
+                        type: "poll",
+                        poll: parsed.poll,
+                        sender: m.name === currentUser ? "user" : "other",
+                        time: formatVNDateTime(m.createAt),
+                        from: m.name,
+                        to: m.to,
+                    };
+                }
+                
                 return {
                     id: m.id ?? Date.now() + Math.random(),
                     text: parsed ? parsed.text : m.mes || "",
@@ -109,21 +147,29 @@ export default function useChatLogic({
             };
 
             if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
+                if (data.length === 0) return;
+                
                 const otherUser =
                     data[0]?.name === currentUser ? data[0]?.to : data[0]?.name;
 
+                const historyKey = `user:${otherUser}`;
+                
+                dispatch(initChat(historyKey));
                 dispatch(
                     setHistory({
-                        chatKey: `user:${otherUser}`,
+                        chatKey: historyKey,
                         messages: data.slice().reverse().map(mapHistoryMessage),
                     })
                 );
             }
 
             if (event === "GET_ROOM_CHAT_MES" && Array.isArray(data?.chatData)) {
+                const groupKey = `group:${data.name}`;
+                
+                dispatch(initChat(groupKey));
                 dispatch(
                     setHistory({
-                        chatKey: `group:${data.name}`,
+                        chatKey: groupKey,
                         messages: data.chatData
                             .slice()
                             .reverse()
@@ -143,7 +189,6 @@ export default function useChatLogic({
             chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
         };
     }, [currentUser, dispatch]);
-
 
     const handleSend = () => {
         if (!activeChat) return;
@@ -193,7 +238,6 @@ export default function useChatLogic({
     const handleFileUpload = async (file) => {
         if (!activeChat || !file) return;
         const captionText = input.trim();
-
 
         setIsUploading(true);
 
@@ -372,6 +416,11 @@ export default function useChatLogic({
 
     const loadHistory = (page = 1, chat = activeChat) => {
         if (!chat) return;
+        
+        // Ensure chat is initialized before loading history
+        const key = makeChatKeyFromActive(chat);
+        dispatch(initChat(key));
+        
         chatSocketServer.send(
             chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",
             { name: chat.name, page }
@@ -402,6 +451,8 @@ export default function useChatLogic({
         toggleStickerPicker: () => setShowStickerPicker((v) => !v),
         toggleGroupMenu: () => setShowGroupMenu((v) => !v),
         handlers: {
+            handleSendPoll,
+            handleSendPollVote,
             handleSend,
             handleFileUpload,
             handleSendVoice,

@@ -1,7 +1,7 @@
 import React from "react";
 import { FaUserCircle, FaFileAlt } from "react-icons/fa";
 
-export default function MessageItem({ msg }) {
+export default function MessageItem({ msg, isRoom, onVote }) {
     const isMe = msg.sender === "user";
 
     const finalType = msg.type || "text";
@@ -9,70 +9,110 @@ export default function MessageItem({ msg }) {
     const finalText = msg.text || "";
     const finalFileName = msg.fileName || null;
 
-    const renderContent = () => (
-        <div className="flex flex-col gap-2">
-            {finalType === "emoji" && (
-                <div className="text-base leading-none">{finalText}</div>
-            )}
+    const renderContent = () => {
+        // Poll rendering
+        if (finalType === "poll") {
+            let poll = msg.poll;
+            if (typeof poll === "string") {
+                try {
+                    const parsed = JSON.parse(poll);
+                    poll = parsed?.payload || parsed || poll;
+                } catch (e) {
+                    // leave as string
+                }
+            }
 
-            {finalType === "sticker" && finalUrl && (
-                <img
-                    src={finalUrl}
-                    alt="sticker"
-                    className="w-28 h-28 object-contain"
-                    onClick={() => window.open(finalUrl, "_blank")}
-                />
-            )}
+            if (!poll || !poll.options) {
+                return <div className="text-sm text-red-500">Không thể hiển thị poll</div>;
+            }
 
-            {finalType === "gif" && finalUrl && (
-                <img
-                    src={finalUrl}
-                    alt="gif"
-                    className="w-44 h-32 object-cover rounded-lg"
-                    onClick={() => window.open(finalUrl, "_blank")}
-                />
-            )}
+            return (
+                <div className="flex flex-col gap-3">
+                    <div className="font-semibold">{poll.question}</div>
+                    <div className="flex flex-col gap-2">
+                        {poll.options.map((opt) => (
+                            <div key={opt.id} className="flex items-center gap-3">
+                                <button
+                                    onClick={() => onVote?.(poll.pollId, opt.id)}
+                                    className="flex-1 text-left px-3 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                                    type="button"
+                                >
+                                    {opt.text}
+                                </button>
+                                <div className="text-sm text-gray-600 w-10 text-center">{opt.votes}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
 
-            {finalType === "image" && finalUrl && (
-                <img
-                    src={finalUrl}
-                    alt={finalText}
-                    className="max-w-xs rounded-lg cursor-pointer"
-                    onClick={() => window.open(finalUrl, "_blank")}
-                />
-            )}
+        return (
+            <div className="flex flex-col gap-2">
+                {finalType === "emoji" && (
+                    <div className="text-base leading-none">{finalText}</div>
+                )}
 
-            {finalType === "audio" && finalUrl && (
-                <audio controls className="max-w-xs">
-                    <source src={finalUrl} type="audio/webm" />
-                </audio>
-            )}
+                {finalType === "sticker" && finalUrl && (
+                    <img
+                        src={finalUrl}
+                        alt="sticker"
+                        className="w-28 h-28 object-contain"
+                        onClick={() => window.open(finalUrl, "_blank")}
+                    />
+                )}
 
-            {finalType === "video" && finalUrl && (
-                <video controls className="max-w-xs rounded-lg">
-                    <source src={finalUrl} />
-                </video>
-            )}
+                {finalType === "gif" && finalUrl && (
+                    <img
+                        src={finalUrl}
+                        alt="gif"
+                        className="w-44 h-32 object-cover rounded-lg"
+                        onClick={() => window.open(finalUrl, "_blank")}
+                    />
+                )}
 
-            {finalType === "file" && finalUrl && (
-                <a
-                    href={finalUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 text-sm underline"
-                >
-                    <FaFileAlt />
-                    {finalFileName || "Tải file"}
-                </a>
-            )}
+                {finalType === "image" && finalUrl && (
+                    <img
+                        src={finalUrl}
+                        alt={finalText}
+                        className="max-w-xs rounded-lg cursor-pointer"
+                        onClick={() => window.open(finalUrl, "_blank")}
+                    />
+                )}
 
-            {finalType !== "emoji" && finalText.trim() && (
-                <p className="text-sm break-words whitespace-pre-wrap">
-                    {finalText}
-                </p>
-            )}
-        </div>
-    );
+                {finalType === "audio" && finalUrl && (
+                    <audio controls className="max-w-xs">
+                        <source src={finalUrl} type="audio/webm" />
+                    </audio>
+                )}
+
+                {finalType === "video" && finalUrl && (
+                    <video controls className="max-w-xs rounded-lg">
+                        <source src={finalUrl} />
+                    </video>
+                )}
+
+                {finalType === "file" && finalUrl && (
+                    <a
+                        href={finalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-sm underline"
+                    >
+                        <FaFileAlt />
+                        {finalFileName || "Tải file"}
+                    </a>
+                )}
+
+                {finalType !== "emoji" && finalText.trim() && (
+                    <p className="text-sm wrap-break-words whitespace-pre-wrap">
+                        {finalText}
+                    </p>
+                )}
+            </div>
+        );
+    };
+
 
     return (
         <div className={`flex mb-4 ${isMe ? "justify-end" : "justify-start"}`}>

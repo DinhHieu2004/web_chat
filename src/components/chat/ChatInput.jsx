@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import ChatPickerPanel from "./ChatPickerPanel";
 import VoiceRecorder from "./VoiceRecorder";
-
+import PollCreator from "./PollCreator";
 
 import {
     FaPaperclip,
@@ -15,7 +15,6 @@ import {
 } from "react-icons/fa";
 
 import { LuSticker } from "react-icons/lu";
-
 import { FaPaperPlane } from "react-icons/fa6";
 
 export default function ChatInput({
@@ -27,8 +26,9 @@ export default function ChatInput({
     isGroupChat,
 }) {
     const [record, setRecord] = useState(false);
+    const [showPollCreator, setShowPollCreator] = useState(false);
 
-    const { handleSend, handleFileUpload } = handlers;
+    const { handleSend, handleFileUpload, handleSendPoll } = handlers;
 
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -99,8 +99,15 @@ export default function ChatInput({
         }
     };
 
+    const handleCreatePoll = ({ question, options }) => {
+        if (handleSendPoll) {
+            handleSendPoll(question, options);
+        }
+        setShowPollCreator(false);
+    };
+
     return (
-        <div className="bg-white border-t border-gray-200">
+        <div className="bg-white border-t border-gray-200 relative">
             {/* Hidden file inputs */}
             <input
                 ref={fileInputRef}
@@ -123,6 +130,14 @@ export default function ChatInput({
                 onChange={onFileSelect}
                 accept="video/*,image/gif"
             />
+
+            {/* Poll Creator */}
+            {showPollCreator && (
+                <PollCreator
+                    onClose={() => setShowPollCreator(false)}
+                    onCreate={handleCreatePoll}
+                />
+            )}
 
             {/* File preview area */}
             {selectedFile && (
@@ -167,9 +182,9 @@ export default function ChatInput({
                     <div className="flex items-center gap-1">
                         {isGroupChat && (
                             <button
-                                onClick={toggleGroupMenu}
+                                onClick={() => setShowPollCreator(true)}
                                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-                                title="Tạo cuộc tham dò ý kiến"
+                                title="Tạo cuộc thăm dò ý kiến"
                                 disabled={isUploading}
                                 type="button"
                             >
@@ -251,31 +266,6 @@ export default function ChatInput({
                         </div>
                     </div>
 
-                    {/* <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (selectedFile) {
-                  handleSendWithFile();
-                } else {
-                  handleSend();
-                }
-              }
-            }}
-            placeholder={
-              isUploading
-                ? "Đang tải file lên..."
-                : selectedFile
-                ? "Thêm chú thích cho file..."
-                : "Nhập tin nhắn..."
-            }
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
-            disabled={isUploading}
-          /> */}
-
                     {record ? (
                         <VoiceRecorder
                             onCancel={() => setRecord(false)}
@@ -296,16 +286,15 @@ export default function ChatInput({
                                 }
                             }}
                             placeholder="Nhập tin nhắn..."
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-full"
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
                             disabled={isUploading}
                         />
                     )}
 
-
                     <button
                         onClick={selectedFile ? handleSendWithFile : handleSend}
                         disabled={isUploading || (!input.trim() && !selectedFile)}
-                        className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="wrap-bg-gradient-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Gửi"
                         type="button"
                     >

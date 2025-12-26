@@ -12,11 +12,16 @@ export default function ContactItem({ contact, active, onClick }) {
         ${active ? "bg-purple-50 border-l-4 border-purple-500" : ""}
       `}
     >
-      <div
-        className="w-10 h-10 bg-linear-to-br from-purple-400 to-blue-400
-                   rounded-full flex items-center justify-center text-white"
-      >
-        {isRoom ? <FaUsers size={16} /> : <FaUser size={16} />}
+      <div className="relative">
+        <div
+          className="w-10 h-10 bg-linear-to-br from-purple-400 to-blue-400
+                     rounded-full flex items-center justify-center text-white"
+        >
+          {isRoom ? <FaUsers size={16} /> : <FaUser size={16} />}
+        </div>
+        {contact.online && (
+          <span className="absolute top-0 right-0 w-3 h-3 bg-green-400 rounded-full ring-2 ring-white" />
+        )}
       </div>
 
       <div className="flex-1 min-w-0">

@@ -1,3 +1,6 @@
+import { v4 as uuidv4 } from "uuid";
+
+
 export const makeOutgoingPayload = ({type, to, mes}) => {
     let wsType;
 
@@ -16,6 +19,43 @@ export const makeOutgoingPayload = ({type, to, mes}) => {
         mes,
     };
 };
+
+export const buildPollMessage = (question, options) => {
+    if( !question || !Array.isArray(options) || options.length <2 ) return null;
+
+    return {
+        customType : "poll",
+        payload: {
+            pollId: uuidv4(),
+            question,
+            options : options.map(o => ({
+                id : uuidv4(),
+                text: o,
+                votes: 0
+            })),
+
+            voteUserNames : [],
+            createdAt : Date.now()
+        }
+       
+    };
+
+};
+
+export const buildPollVote = (pollId, optionId, userName) => {
+    if(!pollId || !optionId || !userName) return null;
+
+    return {
+        customType: "poll_vote",
+        payload :{
+            pollId,
+            optionId,
+            userName,
+            votedAt: Date.now()
+        }
+    }
+
+}
 
 export const makeChatKeyFromActive = (chat) => {
     if (!chat) return null;
@@ -58,6 +98,15 @@ export const parseCustomMessage = (mes) => {
     try {
         const parsed = JSON.parse(mes);
 
+        // Poll payloads
+        if (parsed?.customType === "poll" && parsed?.payload) {
+            return {
+                customType: "poll",
+                type: "poll",
+                poll: parsed.payload,
+            };
+        }
+
         if (parsed?.customType && parsed?.url) {
             return {
                 type: parsed.customType,
@@ -92,6 +141,15 @@ export const tryParseCustomPayload = (text) => {
 
   try {
     const parsed = JSON.parse(text);
+
+    // Poll payloads
+    if (parsed?.customType === "poll" && parsed?.payload) {
+      return {
+        customType: "poll",
+        type: "poll",
+        poll: parsed.payload,
+      };
+    }
 
     if (parsed?.customType && parsed?.url) {
       return {
