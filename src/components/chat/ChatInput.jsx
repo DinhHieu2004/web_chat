@@ -34,7 +34,7 @@ export default function ChatInput({
   const [showPollCreator, setShowPollCreator] = useState(false);
 
 
-  const { handleSend, handleFileUpload, handleSendPoll } = handlers;
+  const { handleSend, handleSendRichText, handleFileUpload, handleSendPoll } = handlers;
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -48,7 +48,27 @@ export default function ChatInput({
   const isFile = preview?.type === "file";
   const [richMode, setRichMode] = useState(false);
   const editorRef = useRef(null);
-
+    const [richContent, setRichContent] = useState("");
+    const [format, setFormat] = useState({
+        bold: false,
+        italic: false,
+        underline: false,
+        strike: false,
+        fontName: "",
+    });
+    const syncFormat = () => {
+        setFormat({
+            bold: document.queryCommandState("bold"),
+            italic: document.queryCommandState("italic"),
+            underline: document.queryCommandState("underline"),
+            strike: document.queryCommandState("strikeThrough"),
+            fontName: document.queryCommandValue("fontName") || "",
+        });
+    };
+    const onSendRichText = () => {
+        if (!editorRef.current) return;
+        handleSendRichText(editorRef.current);
+    };
 
     const togglePicker = (tab) => {
     setActiveTab(tab);
@@ -325,8 +345,8 @@ export default function ChatInput({
           </div>
             <div className="flex-1" />
               <button
-                  onClick={selectedFile ? handleSendWithFile : handleSend}
-                  disabled={isUploading || (!input.trim() && !selectedFile)}
+                  onClick={selectedFile ? handleSendWithFile : (richMode ? onSendRichText : handleSend)}
+                  disabled={isUploading || (!input.trim() && !selectedFile && !(richMode && richContent.trim()))}
                   className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Gửi"
                   type="button"
@@ -376,12 +396,16 @@ export default function ChatInput({
                     contentEditable
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none"
                     data-placeholder="Nhập tin nhắn..."
+                    onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
                     onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
-                            handleSendRich();
+                            handleSend();
                         }
                     }}
+                    onKeyUp={syncFormat}
+                    onMouseUp={syncFormat}
+                    onFocus={syncFormat}
                 />
             ) : (
                 <input
@@ -402,22 +426,30 @@ export default function ChatInput({
 
             {richMode && !record && (
                 <div className="flex items-center gap-2 mt-2 pt-2 text-sm">
-                    <button
-                        type="button"
-                        onClick={() => document.execCommand("bold")}
-                        className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 font-bold"
-                    >
-                        B
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => document.execCommand("italic")}
-                        className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 italic"
-                    >
-                        I
-                    </button>
-
+                        <button type="button" onClick={() => {
+                                document.execCommand("bold");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 font-bold ${
+                                format.bold ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>B
+                        </button>
+                        <button type="button" onClick={() => {
+                                document.execCommand("italic");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 italic ${
+                                format.italic ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>I
+                        </button>
+                        <button type="button" onClick={() => {
+                                document.execCommand("underline");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 underline ${
+                                format.underline ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>U
+                        </button>
+                        <button type="button" onClick={() => {
+                                document.execCommand("strikeThrough");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 line-through ${
+                                format.strike ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>S
+                        </button>
                     <input
                         type="color"
                         className="w-8 h-8 p-0 border border-gray-300 rounded cursor-pointer"
@@ -436,20 +468,22 @@ export default function ChatInput({
                         <option value="4">Large</option>
                         <option value="5">XL</option>
                     </select>
-                    <div className="overflow-x-auto">
-                        <div className="flex gap-2 w-max px-1">
+                    <div className="overflow-x-auto" style={{ width: "300px" }}>
+                        <div className="flex gap-2 px-1">
                             {FONTS.map((item) => (
                                 <button
-                                    key={item.font} type="button" style={{ fontFamily: item.font }}
+                                    key={item.font}
+                                    type="button"
+                                    style={{ fontFamily: item.font }}
                                     className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 flex-shrink-0"
                                     onClick={() => document.execCommand("fontName", false, item.font)}
-                                    title={item.font}>
+                                    title={item.font}
+                                >
                                     {item.label}
                                 </button>
                             ))}
                         </div>
                     </div>
-
                 </div>
             )}
         </div>
