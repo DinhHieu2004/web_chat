@@ -293,12 +293,24 @@ export const previewToText = (msg) => {
 };
 
 export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
-  const p = getMessagePreview(originMsg);
-  const previewText = previewToText(originMsg);
+  const origin =
+    originMsg?.type === "forward" && originMsg?.meta?.forward?.preview
+      ? originMsg.meta.forward.preview
+      : originMsg;
+
+  const p = getMessagePreview(origin);
+  const previewLabel = previewToText(origin);
+
+  const rawText =
+    typeof origin?.text === "string"
+      ? origin.text
+      : typeof origin?.text?.text === "string"
+      ? origin.text.text
+      : "";
 
   return JSON.stringify({
     customType: "forward",
-    text: previewText, 
+    text: String(note || previewLabel || ""),
     url: p?.url || null,
     fileName: p?.fileName || null,
     meta: {
@@ -306,15 +318,19 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
         fromChat: originChat?.name || "",
         fromType: originChat?.type || "",
         originalFrom: originMsg?.from || "",
-        originalType: originMsg?.type || "text",
+        originalType: origin?.type || "text",
+
         preview: {
-          type: p?.type || originMsg?.type || "text",
-          text: previewText,
-          url: p?.url || null,
+          type: p?.type || origin?.type || "text",
+          text: rawText,             
+          url: p?.url || null,      
           fileName: p?.fileName || null,
         },
+
+        previewLabel,              
         note: String(note || ""),
       },
     },
   });
 };
+

@@ -1,7 +1,13 @@
 import React from "react";
 import { FaUserCircle, FaFileAlt, FaReply, FaShare } from "react-icons/fa";
 
-export default function MessageItem({ msg, onReply, onForward, isRoom, onVote }) {
+export default function MessageItem({
+  msg,
+  onReply,
+  onForward,
+  isRoom,
+  onVote,
+}) {
   const isMe = msg.sender === "user";
   const finalType = msg.type || "text";
   const finalUrl = msg.url || null;
@@ -21,6 +27,82 @@ export default function MessageItem({ msg, onReply, onForward, isRoom, onVote })
   };
 
   const renderContent = () => {
+    if (finalType === "forward") {
+      const fwd = msg?.meta?.forward;
+      const pv = fwd?.preview || {};
+      const note = typeof fwd?.note === "string" ? fwd.note : "";
+
+      const pvType = pv?.type || "text";
+      const pvUrl = pv?.url || null;
+      const pvText = typeof pv?.text === "string" ? pv.text : "";
+      const pvFileName = pv?.fileName || null;
+
+      return (
+        <div className="flex flex-col gap-2">
+          {note.trim() && (
+            <p className="text-sm break-words whitespace-pre-wrap">{note}</p>
+          )}
+
+          {pvType === "emoji" && (
+            <div className="text-base leading-none">{pvText}</div>
+          )}
+
+          {pvType === "sticker" && pvUrl && (
+            <img
+              src={pvUrl}
+              alt="sticker"
+              className="w-28 h-28 object-contain"
+            />
+          )}
+
+          {pvType === "gif" && pvUrl && (
+            <img
+              src={pvUrl}
+              alt="gif"
+              className="w-44 h-32 object-cover rounded-lg"
+            />
+          )}
+
+          {pvType === "image" && pvUrl && (
+            <img
+              src={pvUrl}
+              alt="image"
+              className="max-w-xs rounded-lg cursor-pointer"
+              onClick={() => window.open(pvUrl, "_blank")}
+            />
+          )}
+
+          {pvType === "audio" && pvUrl && (
+            <audio controls className="max-w-xs">
+              <source src={pvUrl} />
+            </audio>
+          )}
+
+          {pvType === "video" && pvUrl && (
+            <video controls className="max-w-xs rounded-lg">
+              <source src={pvUrl} />
+            </video>
+          )}
+
+          {pvType === "file" && pvUrl && (
+            <a
+              href={pvUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 text-sm underline"
+            >
+              <FaFileAlt />
+              {pvFileName || "Tải file"}
+            </a>
+          )}
+
+          {pvType !== "emoji" && pvText.trim() && (
+            <p className="text-sm break-words whitespace-pre-wrap">{pvText}</p>
+          )}
+        </div>
+      );
+    }
+
     if (finalType === "poll") {
       let poll = msg.poll;
 
@@ -28,9 +110,7 @@ export default function MessageItem({ msg, onReply, onForward, isRoom, onVote })
         try {
           const parsed = JSON.parse(poll);
           poll = parsed?.payload || parsed || poll;
-        } catch (e) {
-          // keep as string
-        }
+        } catch (e) {}
       }
 
       if (!poll || !poll.options) {
@@ -97,7 +177,7 @@ export default function MessageItem({ msg, onReply, onForward, isRoom, onVote })
 
         {finalType === "audio" && finalUrl && (
           <audio controls className="max-w-xs">
-            <source src={finalUrl} type="audio/webm" />
+            <source src={finalUrl} />
           </audio>
         )}
 
@@ -163,7 +243,8 @@ export default function MessageItem({ msg, onReply, onForward, isRoom, onVote })
                   }`}
                 >
                   <div className="font-semibold truncate">
-                    Trả lời {replyMeta.from === msg.from ? "Bạn" : replyMeta.from}
+                    Trả lời{" "}
+                    {replyMeta.from === msg.from ? "Bạn" : replyMeta.from}
                   </div>
 
                   {preview?.url && (

@@ -26,7 +26,6 @@ import {
   filterByDate,
 } from "../utils/chatSearchUtils";
 
-
 export default function useChatLogic({
   activeChat,
   setActiveChat,
@@ -53,7 +52,7 @@ export default function useChatLogic({
 
   // ---------- DATA ----------
   const chatKey = makeChatKeyFromActive(activeChat);
- 
+
   const { handleSendPoll, handleSendPollVote } = usePollActions({
     activeChat,
     chatKey,
@@ -180,14 +179,17 @@ export default function useChatLogic({
   }, [messages]);
 
   useEffect(() => {
-    const onIncoming = (data) => {
-      const { from, to, mes } = data || {};
+    const onIncoming = (payload) => {
+      const d = payload?.data?.data || payload?.data || payload || {};
+      const { name, from: fromRaw, to, mes, type } = d;
+
+      const from = fromRaw || name; 
 
       const parsed = tryParseCustomPayload(
         typeof mes === "string" ? mes : mes?.mes
       );
 
-      const incomingKey = makeChatKeyFromWs({ from, to, currentUser });
+      const incomingKey = makeChatKeyFromWs({ type, from, to, currentUser });
 
       const now = Date.now();
       const rawText =
@@ -199,7 +201,7 @@ export default function useChatLogic({
           message: {
             id: now + Math.random(),
             text: parsed ? parsed.text : rawText || "",
-            sender: "other",
+            sender: from === currentUser ? "user" : "other", 
             actionTime: now,
             time: formatVNDateTime(now),
             type: parsed?.type || "text",
@@ -331,10 +333,10 @@ export default function useChatLogic({
       const type = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext)
         ? "image"
         : ["mp4", "webm"].includes(ext)
-          ? "video"
-          : ["mp3", "wav", "ogg", "webm"].includes(ext)
-            ? "audio"
-            : "file";
+        ? "video"
+        : ["mp3", "wav", "ogg", "webm"].includes(ext)
+        ? "audio"
+        : "file";
 
       const payloadText = attachReplyMeta(
         JSON.stringify({
