@@ -96,16 +96,22 @@ export default function useChatLogic({
 
   // foward
   const [forwardMsg, setForwardMsg] = useState(null);
+  const [forwardPreview, setForwardPreview] = useState(null);
   const [showForwardModal, setShowForwardModal] = useState(false);
   const contacts = useSelector((state) => state?.listUser?.list || []);
 
-  const startForward = (msg) => {
-    setForwardMsg(msg);
-    setShowForwardModal(true);
+  const startForward = (payload) => {
+  const msg = payload?.message ?? payload;        
+  const preview = payload?.preview ?? null;
+  setForwardMsg(msg);
+  setForwardPreview(preview || getPurePreview?.(msg) || getMessagePreview?.(msg) || null);
+  setShowForwardModal(true);
   };
+
 
   const closeForward = () => {
     setForwardMsg(null);
+    setForwardPreview(null);
     setShowForwardModal(false);
   };
 
@@ -652,6 +658,7 @@ export default function useChatLogic({
 
     contacts,
     forwardMsg,
+    forwardPreview,
     showForwardModal,
 
     handlers: {

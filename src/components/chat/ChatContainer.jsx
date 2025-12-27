@@ -69,7 +69,7 @@ export default function ChatContainer() {
             onClose={chat.handlers.closeForward}
             onSend={chat.handlers.handleConfirmForward}
             contacts={chat.contacts}
-            messagePreview={chat.getMessagePreview?.(chat.forwardMsg)?.text || ""}
+            messagePreview={chat.forwardPreview || chat.getPurePreview?.(chat.forwardMsg) || chat.getMessagePreview?.(chat.forwardMsg) || null}
           />
 
           <ChatSearchPanel

@@ -26,6 +26,19 @@ export default function MessageItem({
     return { text: reply.preview };
   };
 
+  const buildPreviewForForward = (msg) => {
+    if (msg?.type === "forward" && msg?.meta?.forward?.preview) {
+      return msg.meta.forward.preview;
+    }
+
+    return {
+      type: msg?.type || "text",
+      text: typeof msg?.text === "string" ? msg.text : "",
+      url: msg?.url || null,
+      fileName: msg?.fileName || null,
+    };
+  };
+
   const renderContent = () => {
     if (finalType === "forward") {
       const fwd = msg?.meta?.forward;
@@ -298,7 +311,12 @@ export default function MessageItem({
         </button>
 
         <button
-          onClick={() => onForward?.(msg)}
+          onClick={() =>
+            onForward?.({
+              message: msg,
+              preview: buildPreviewForForward(msg),
+            })
+          }
           className={`absolute -bottom-1 ${
             isMe ? "-left-16" : "-right-16"
           } opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition p-2`}
