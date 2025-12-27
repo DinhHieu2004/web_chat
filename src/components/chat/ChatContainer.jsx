@@ -36,7 +36,7 @@ export default function ChatContainer() {
                         onClick={() => dispatch(logout())}
                         className="px-4 py-2 bg-red-500 text-white rounded"
                     >
-                        Logout
+                        Đăng xuất
                     </button>
                 </div>
 

@@ -1,0 +1,17 @@
+export const FONTS = [
+    { label: "Aa", font: "Arial" },
+    { label: "Aa", font: "Courier New" },
+    { label: "Aa", font: "Georgia" },
+    { label: "Aa", font: "Times New Roman" },
+    { label: "Aa", font: "Verdana" },
+    { label: "Aa", font: "Tahoma" },
+    { label: "Aa", font: "Trebuchet MS" },
+    { label: "Aa", font: "Brush Script MT" },
+    { label: "Aa", font: "Lucida Handwriting" },
+    { label: "Aa", font: "Segoe Script" },
+    { label: "Aa", font: "Monotype Corsiva" },
+    { label: "Aa", font: "Vivaldi" },
+    { label: "Aa", font: "Edwardian Script ITC" },
+    { label: "Aa", font: "Snell Roundhand" },
+    { label: "Aa", font: "Zapfino" },
+];

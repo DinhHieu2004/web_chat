@@ -142,6 +142,7 @@ export const tryParseCustomPayload = (text) => {
 
     try {
         const parsed = JSON.parse(text);
+        console.log(parsed)
 
         if (parsed?.customType === "poll" && parsed?.payload) {
             return {
@@ -157,6 +158,7 @@ export const tryParseCustomPayload = (text) => {
                 text: parsed.text || "",
                 fileName: parsed.fileName || null,
                 meta: parsed.meta || null,
+                blocks: parsed.blocks || [],
             };
         }
 
@@ -179,6 +181,7 @@ export const tryParseCustomPayload = (text) => {
             text: parsed.text || "",
             fileName: parsed.fileName || null,
             meta: parsed.meta || null,
+            blocks: parsed.blocks || [],
         };
     } catch (_) { }
 
@@ -259,4 +262,66 @@ export const getPurePreview = (msg, messageMap) => {
     }
 
     return { type: "text", text: "" };
+};
+export const extractRichText = (editor, defaultFont = "Arial", defaultColor = "#000000") => {
+    if (!editor) return null;
+
+    const blocks = [];
+    let plainText = "";
+
+    const createBlockIfNeeded = () => {
+        if (blocks.length === 0 || !blocks[blocks.length - 1]) {
+            blocks.push({ spans: [] });
+        }
+    };
+
+    const traverse = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.nodeValue;
+            if (!text) return;
+
+            const parent = node.parentElement || editor;
+            const style = window.getComputedStyle(parent);
+
+            const span = { text };
+            const styles = {};
+
+            if (style.fontWeight === "700" || parseInt(style.fontWeight) >= 700) styles.bold = true;
+            if (style.fontStyle === "italic") styles.italic = true;
+            if (style.textDecoration.includes("underline")) styles.underline = true;
+            if (style.textDecoration.includes("line-through")) styles.strike = true;
+            if (Object.keys(styles).length) span.styles = styles;
+
+            const font = style.fontFamily.split(",")[0].trim().replace(/^['"]|['"]$/g, "");
+            if (font !== defaultFont) span.font = font;
+
+            const color = style.color;
+            if (color !== defaultColor) span.color = color;
+
+            const fontSize = style.fontSize;
+            if (fontSize) span.fontSize = fontSize;
+
+            createBlockIfNeeded();
+            blocks[blocks.length - 1].spans.push(span);
+            plainText += text;
+
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.nodeName === "BR") {
+                blocks.push({ spans: [] });
+                plainText += "\n";
+            } else if (["DIV", "P"].includes(node.nodeName)) {
+                blocks.push({ spans: [] });
+                node.childNodes.forEach(traverse);
+                blocks.push(null);
+                plainText += "\n";
+            } else {
+                node.childNodes.forEach(traverse);
+            }
+        }
+    };
+
+    editor.childNodes.forEach(traverse);
+    const finalBlocks = blocks.filter(b => b && b.spans.length > 0);
+
+    return { blocks: finalBlocks, text: plainText };
 };
