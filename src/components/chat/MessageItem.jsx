@@ -4,6 +4,8 @@ import { FaUserCircle, FaFileAlt, FaReply } from "react-icons/fa";
 export default function MessageItem({ msg, onReply, isRoom, onVote }) {
     const isMe = msg.sender === "user";
     const finalType = msg.type || "text";
+    console.log(finalType)
+    console.log(msg)
     const finalUrl = msg.url || null;
     const finalText = msg.text || "";
     const finalFileName = msg.fileName || null;
@@ -81,9 +83,9 @@ export default function MessageItem({ msg, onReply, isRoom, onVote }) {
                         onClick={() => window.open(finalUrl, "_blank")}
                     />
                 )}
-                {finalType === "richtext" && msg.rich?.blocks && (
+                {finalType === "richText" && msg.blocks.length > 0 && (
                     <div className="flex flex-col gap-1">
-                        {msg.rich.blocks.map((block, i) => (
+                        {msg.blocks.map((block, i) => (
                             <div key={i} style={{ whiteSpace: "pre-wrap" }}>
                                 {block.spans?.length ? (
                                     block.spans.map((span, j) => {
@@ -96,15 +98,14 @@ export default function MessageItem({ msg, onReply, isRoom, onVote }) {
                                             ].filter(Boolean).join(" "),
                                             fontFamily: span.font || "inherit",
                                             color: span.color || "inherit",
+                                            fontSize: span.fontSize || "inherit",
                                         };
                                         return (
-                                            <span key={j} style={style}>
-                {span.text}
-              </span>
+                                            <span key={j} style={style}>{span.text}</span>
                                         );
                                     })
                                 ) : (
-                                    <span>{block.text}</span> // fallback khi không có spans
+                                    <span>{block.text}</span>
                                 )}
                             </div>
                         ))}
@@ -143,7 +144,7 @@ export default function MessageItem({ msg, onReply, isRoom, onVote }) {
                         {finalFileName || "Tải file"}
                     </a>
                 )}
-                {finalType !== "emoji" && finalText.trim() && (
+                {finalType !== "emoji" &&  finalType !== "richText" && finalText.trim() && (
                     <p className="text-sm wrap-break-words whitespace-pre-wrap">
                         {finalText}
                     </p>
@@ -185,9 +186,8 @@ export default function MessageItem({ msg, onReply, isRoom, onVote }) {
                                     }`}
                             >
                                 <div className="font-semibold truncate">
-                                    Trả lời {replyMeta.from === msg.from ? "Bạn" : replyMeta.from}
+                                    {replyMeta.from}
                                 </div>
-
                                 {preview?.url && (
                                     <>
                                         {["image", "gif", "sticker"].includes(preview.type) && (

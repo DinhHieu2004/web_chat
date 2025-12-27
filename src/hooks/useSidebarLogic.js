@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getList, setActiveChat, setListUser, setUserOnlineStatus } from "../redux/slices/listUserSlice";
 import { chatSocketServer } from "../services/socket";
+import { tryParseCustomPayload } from "../utils/chatDataFormatter.js";
 
 export default function useSidebarLogic(searchTerm, onSelectContact) {
     const dispatch = useDispatch();
@@ -9,6 +10,22 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     const bootedRef = useRef(false);
 
+    const getSidebarPreview = (mes) => {
+        const parsed = tryParseCustomPayload(
+            typeof mes === "string" ? mes : mes?.mes
+        );
+
+        if (!parsed) {
+            return typeof mes === "string" ? mes : "";
+        }
+        const { type, text, fileName } = parsed;
+
+        if (["image", "video", "gif", "sticker", "audio"].includes(type)) {
+            return `[${type.toUpperCase()}]`;
+        }
+        if (type === "file") return fileName || "[File]";
+        if (type === "richText") return text;
+    };
     useEffect(() => {
         if (bootedRef.current) return;
         bootedRef.current = true;
@@ -26,10 +43,10 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
             if (!mes) return;
             const key = type === "room" ? to : name === user ? to : name;
             if (!key) return;
-
+            const preview = getSidebarPreview(mes);
             dispatch(setListUser({
                 name: key,
-                lastMessage: mes,
+                lastMessage: preview,
                 actionTime: Date.now(),
                 type: type === 1 ? "room" : "people",
             }));
