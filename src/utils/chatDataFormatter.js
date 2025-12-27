@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from "uuid";
-import {useEffect, useRef} from "react";
 
 export const hasEmoji = (s = "") => /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(s);
 
@@ -143,6 +142,7 @@ export const tryParseCustomPayload = (text) => {
 
     try {
         const parsed = JSON.parse(text);
+        console.log(parsed)
 
         if (parsed?.customType === "poll" && parsed?.payload) {
             return {
@@ -158,6 +158,7 @@ export const tryParseCustomPayload = (text) => {
                 text: parsed.text || "",
                 fileName: parsed.fileName || null,
                 meta: parsed.meta || null,
+                blocks: parsed.blocks || [],
             };
         }
 
@@ -180,6 +181,7 @@ export const tryParseCustomPayload = (text) => {
             text: parsed.text || "",
             fileName: parsed.fileName || null,
             meta: parsed.meta || null,
+            blocks: parsed.blocks || [],
         };
     } catch (_) { }
 
@@ -265,44 +267,61 @@ export const extractRichText = (editor, defaultFont = "Arial", defaultColor = "#
     if (!editor) return null;
 
     const blocks = [];
-    const lines = Array.from(editor.childNodes);
+    let plainText = "";
 
-    lines.forEach((lineNode) => {
-        const block = { spans: [] };
+    const createBlockIfNeeded = () => {
+        if (blocks.length === 0 || !blocks[blocks.length - 1]) {
+            blocks.push({ spans: [] });
+        }
+    };
 
-        const traverse = (node) => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.nodeValue;
-                if (!text.trim()) return;
+    const traverse = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.nodeValue;
+            if (!text) return;
 
-                const parent = node.parentElement || editor;
-                const style = window.getComputedStyle(parent);
+            const parent = node.parentElement || editor;
+            const style = window.getComputedStyle(parent);
 
-                const span = { text };
-                const styles = {};
+            const span = { text };
+            const styles = {};
 
-                if (style.fontWeight === "700") styles.bold = true;
-                if (style.fontStyle === "italic") styles.italic = true;
-                if (style.textDecoration.includes("underline")) styles.underline = true;
-                if (style.textDecoration.includes("line-through")) styles.strike = true;
-                if (Object.keys(styles).length) span.styles = styles;
+            if (style.fontWeight === "700" || parseInt(style.fontWeight) >= 700) styles.bold = true;
+            if (style.fontStyle === "italic") styles.italic = true;
+            if (style.textDecoration.includes("underline")) styles.underline = true;
+            if (style.textDecoration.includes("line-through")) styles.strike = true;
+            if (Object.keys(styles).length) span.styles = styles;
 
-                const font = style.fontFamily.split(",")[0].trim().replace(/^['"]|['"]$/g, "");
-                if (font !== defaultFont) span.font = font;
+            const font = style.fontFamily.split(",")[0].trim().replace(/^['"]|['"]$/g, "");
+            if (font !== defaultFont) span.font = font;
 
-                const color = style.color;
-                if (color !== defaultColor) span.color = color;
+            const color = style.color;
+            if (color !== defaultColor) span.color = color;
 
-                block.spans.push(span);
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const fontSize = style.fontSize;
+            if (fontSize) span.fontSize = fontSize;
+
+            createBlockIfNeeded();
+            blocks[blocks.length - 1].spans.push(span);
+            plainText += text;
+
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.nodeName === "BR") {
+                blocks.push({ spans: [] });
+                plainText += "\n";
+            } else if (["DIV", "P"].includes(node.nodeName)) {
+                blocks.push({ spans: [] });
+                node.childNodes.forEach(traverse);
+                blocks.push(null);
+                plainText += "\n";
+            } else {
                 node.childNodes.forEach(traverse);
             }
-        };
+        }
+    };
 
-        traverse(lineNode);
+    editor.childNodes.forEach(traverse);
+    const finalBlocks = blocks.filter(b => b && b.spans.length > 0);
 
-        if (block.spans.length) blocks.push(block);
-    });
-
-    return { blocks };
+    return { blocks: finalBlocks, text: plainText };
 };

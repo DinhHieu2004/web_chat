@@ -56,18 +56,27 @@ export default function ChatInput({
         strike: false,
         fontName: "",
     });
+    const normalizeFontName = (name) =>
+        (name || "").split(",")[0].replace(/['"]/g, "").trim();
+
     const syncFormat = () => {
+        const fontName = normalizeFontName(document.queryCommandValue("fontName"));
         setFormat({
             bold: document.queryCommandState("bold"),
             italic: document.queryCommandState("italic"),
             underline: document.queryCommandState("underline"),
             strike: document.queryCommandState("strikeThrough"),
-            fontName: document.queryCommandValue("fontName") || "",
+            fontName,
         });
     };
+
     const onSendRichText = () => {
         if (!editorRef.current) return;
         handleSendRichText(editorRef.current);
+        if (editorRef.current) {
+            editorRef.current.innerHTML = "";
+        }
+        setRichContent("");
     };
 
     const togglePicker = (tab) => {
@@ -398,9 +407,9 @@ export default function ChatInput({
                     data-placeholder="Nhập tin nhắn..."
                     onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
                     onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
+                        if (e.key === "Enter") {
                             e.preventDefault();
-                            handleSend();
+                            document.execCommand("insertHTML", false, "<br><br>");
                         }
                     }}
                     onKeyUp={syncFormat}
@@ -423,7 +432,6 @@ export default function ChatInput({
                     disabled={isUploading}
                 />
             )}
-
             {richMode && !record && (
                 <div className="flex items-center gap-2 mt-2 pt-2 text-sm">
                         <button type="button" onClick={() => {
@@ -464,9 +472,9 @@ export default function ChatInput({
                             document.execCommand("fontSize", false, e.target.value)
                         }
                     >
-                        <option value="3">Normal</option>
-                        <option value="4">Large</option>
-                        <option value="5">XL</option>
+                        <option value="3">Bình thường</option>
+                        <option value="5">Lớn</option>
+                        <option value="7">Rất lớn</option>
                     </select>
                     <div className="overflow-x-auto" style={{ width: "300px" }}>
                         <div className="flex gap-2 px-1">
@@ -475,8 +483,15 @@ export default function ChatInput({
                                     key={item.font}
                                     type="button"
                                     style={{ fontFamily: item.font }}
-                                    className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 flex-shrink-0"
-                                    onClick={() => document.execCommand("fontName", false, item.font)}
+                                    className={`px-2 py-1 border rounded hover:bg-gray-100 flex-shrink-0
+            ${format.fontName === item.font ? "bg-purple-100 text-purple-600 border-purple-500" : "text-gray-600 border-gray-300"}`}
+                                    onClick={() => {
+                                        if (editorRef.current) {
+                                            editorRef.current.focus();
+                                            document.execCommand("fontName", false, item.font);
+                                            syncFormat();
+                                        }
+                                    }}
                                     title={item.font}
                                 >
                                     {item.label}

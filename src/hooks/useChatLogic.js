@@ -165,6 +165,7 @@ export default function useChatLogic({
             url: parsed?.url || null,
             fileName: parsed?.fileName || null,
             meta: parsed?.meta || null,
+              blocks: parsed?.blocks || [],
           },
         })
       );
@@ -194,6 +195,7 @@ export default function useChatLogic({
           url: parsed?.url || m?.url || null,
           fileName: parsed?.fileName || null,
           meta: parsed?.meta || null,
+            blocks: parsed?.blocks || [],
         };
       };
 
@@ -348,27 +350,39 @@ export default function useChatLogic({
   };
     const handleSendRichText = (editorRef) => {
         const richJson = extractRichText(editorRef);
-        console.log(editorRef)
+        console.log(richJson)
         if (!richJson) return;
-
-        console.log("RichText JSON preview:", JSON.stringify(richJson, null, 2));
-
         if (!activeChat) return;
 
         const now = Date.now();
-        const mes = richJson;
 
+        let payload = JSON.stringify({
+            customType: "richText",
+            text: richJson.text,
+            blocks: richJson.blocks,
+        });
+
+        payload = attachReplyMeta(payload);
+        console.log(payload)
+        chatSocketServer.send(
+            "SEND_CHAT",
+            makeOutgoingPayload({
+                type: activeChat.type,
+                to: activeChat.name,
+                mes: payload,
+            })
+        );
         dispatch(
             addMessage({
                 chatKey,
                 message: {
                     id: `local-${now}`,
                     text: "",
-                    rich: mes,
+                    blocks: richJson.blocks,
                     sender: "user",
                     actionTime: now,
                     time: formatVNDateTime(now),
-                    type: "richtext",
+                    type: "richText",
                     from: currentUser,
                     to: activeChat.name,
                     optimistic: true,
@@ -376,11 +390,10 @@ export default function useChatLogic({
                 },
             })
         );
-
         dispatch(
             setListUser({
                 name: activeChat.name,
-                lastMessage: "[RichText]",
+                lastMessage: richJson.text,
                 actionTime: now,
                 type: activeChat.type,
             })
