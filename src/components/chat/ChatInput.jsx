@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import ChatPickerPanel from "./ChatPickerPanel";
 import VoiceRecorder from "./VoiceRecorder";
+import { FONTS } from "../../data/fontList";
 import PollCreator from "./PollCreator";
 
 import {
@@ -33,7 +34,7 @@ export default function ChatInput({
   const [showPollCreator, setShowPollCreator] = useState(false);
 
 
-  const { handleSend, handleFileUpload, handleSendPoll } = handlers;
+  const { handleSend, handleSendRichText, handleFileUpload, handleSendPoll } = handlers;
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -45,8 +46,40 @@ export default function ChatInput({
   const preview = getMessagePreview(replyMsg);
   const isImageLike = ["image", "gif", "sticker"].includes(preview?.type);
   const isFile = preview?.type === "file";
+  const [richMode, setRichMode] = useState(false);
+  const editorRef = useRef(null);
+    const [richContent, setRichContent] = useState("");
+    const [format, setFormat] = useState({
+        bold: false,
+        italic: false,
+        underline: false,
+        strike: false,
+        fontName: "",
+    });
+    const normalizeFontName = (name) =>
+        (name || "").split(",")[0].replace(/['"]/g, "").trim();
 
-  const togglePicker = (tab) => {
+    const syncFormat = () => {
+        const fontName = normalizeFontName(document.queryCommandValue("fontName"));
+        setFormat({
+            bold: document.queryCommandState("bold"),
+            italic: document.queryCommandState("italic"),
+            underline: document.queryCommandState("underline"),
+            strike: document.queryCommandState("strikeThrough"),
+            fontName,
+        });
+    };
+
+    const onSendRichText = () => {
+        if (!editorRef.current) return;
+        handleSendRichText(editorRef.current);
+        if (editorRef.current) {
+            editorRef.current.innerHTML = "";
+        }
+        setRichContent("");
+    };
+
+    const togglePicker = (tab) => {
     setActiveTab(tab);
     setShowPicker((prev) => !prev);
   };
@@ -279,12 +312,16 @@ export default function ChatInput({
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
                 title="Emoji"
                 disabled={isUploading}
-                type="button"
-              >
+                type="button">
                 <FaSmile size={18} />
               </button>
+                <button onClick={() => {setRichMode((v) => !v); setRecord(false)}}
+                    className={`p-2 rounded-full ${richMode ? "bg-purple-100 text-purple-600" : "text-gray-600"}`}
+                    title="Chữ kiểu" type="button">Aa
+                </button>
 
-              <button
+
+                <button
                 onClick={() => setRecord(true)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
                 title="Voice"
@@ -315,6 +352,19 @@ export default function ChatInput({
               </div>
             </div>
           </div>
+            <div className="flex-1" />
+              <button
+                  onClick={selectedFile ? handleSendWithFile : (richMode ? onSendRichText : handleSend)}
+                  disabled={isUploading || (!input.trim() && !selectedFile && !(richMode && richContent.trim()))}
+                  className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Gửi"
+                  type="button"
+              >
+                  <FaPaperPlane size={18} />
+              </button>
+          </div>
+
+
 
           {/* <input
             type="text"
@@ -341,40 +391,116 @@ export default function ChatInput({
             disabled={isUploading}
           /> */}
 
-          {record ? (
-            <VoiceRecorder
-              onCancel={() => setRecord(false)}
-              onSend={(audioB) => {
-                handlers.handleSendVoice(audioB);
-                setRecord(false);
-              }}
-            />
-          ) : (
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Nhập tin nhắn..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500"
-              disabled={isUploading}
-            />
-          )}
+            {record ? (
+                <VoiceRecorder
+                    onCancel={() => setRecord(false)}
+                    onSend={(audioB) => {
+                        handlers.handleSendVoice(audioB);
+                        setRecord(false);
+                    }}
+                />
+            ) : richMode ? (
+                <div
+                    ref={editorRef}
+                    contentEditable
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none"
+                    data-placeholder="Nhập tin nhắn..."
+                    onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            document.execCommand("insertHTML", false, "<br><br>");
+                        }
+                    }}
+                    onKeyUp={syncFormat}
+                    onMouseUp={syncFormat}
+                    onFocus={syncFormat}
+                />
+            ) : (
+                <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSend();
+                        }
+                    }}
+                    placeholder="Nhập tin nhắn..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-full"
+                    disabled={isUploading}
+                />
+            )}
+            {richMode && !record && (
+                <div className="flex items-center gap-2 mt-2 pt-2 text-sm">
+                        <button type="button" onClick={() => {
+                                document.execCommand("bold");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 font-bold ${
+                                format.bold ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>B
+                        </button>
+                        <button type="button" onClick={() => {
+                                document.execCommand("italic");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 italic ${
+                                format.italic ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>I
+                        </button>
+                        <button type="button" onClick={() => {
+                                document.execCommand("underline");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 underline ${
+                                format.underline ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>U
+                        </button>
+                        <button type="button" onClick={() => {
+                                document.execCommand("strikeThrough");syncFormat();}}
+                            className={`px-2 py-1 border rounded hover:bg-gray-100 line-through ${
+                                format.strike ? "bg-purple-100 text-purple-600" : "text-gray-600"
+                            }`}>S
+                        </button>
+                    <input
+                        type="color"
+                        className="w-8 h-8 p-0 border border-gray-300 rounded cursor-pointer"
+                        onChange={(e) =>
+                            document.execCommand("foreColor", false, e.target.value)
+                        }
+                    />
 
-          <button
-            onClick={selectedFile ? handleSendWithFile : handleSend}
-            disabled={isUploading || (!input.trim() && !selectedFile)}
-            className="wrap-bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Gửi"
-            type="button"
-          >
-            <FaPaperPlane size={18} />
-          </button>
+                    <select
+                        className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50"
+                        onChange={(e) =>
+                            document.execCommand("fontSize", false, e.target.value)
+                        }
+                    >
+                        <option value="3">Bình thường</option>
+                        <option value="5">Lớn</option>
+                        <option value="7">Rất lớn</option>
+                    </select>
+                    <div className="overflow-x-auto" style={{ width: "300px" }}>
+                        <div className="flex gap-2 px-1">
+                            {FONTS.map((item) => (
+                                <button
+                                    key={item.font}
+                                    type="button"
+                                    style={{ fontFamily: item.font }}
+                                    className={`px-2 py-1 border rounded hover:bg-gray-100 flex-shrink-0
+            ${format.fontName === item.font ? "bg-purple-100 text-purple-600 border-purple-500" : "text-gray-600 border-gray-300"}`}
+                                    onClick={() => {
+                                        if (editorRef.current) {
+                                            editorRef.current.focus();
+                                            document.execCommand("fontName", false, item.font);
+                                            syncFormat();
+                                        }
+                                    }}
+                                    title={item.font}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Upload progress */}
@@ -384,7 +510,6 @@ export default function ChatInput({
             <span>Đang tải file lên...</span>
           </div>
         )}
-      </div>
     </div>
   );
 }

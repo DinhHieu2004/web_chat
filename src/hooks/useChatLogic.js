@@ -13,7 +13,7 @@ import {
   makeChatKeyFromWs,
   getMessagePreview,
   getPurePreview,
-  hasEmoji,
+  hasEmoji, extractRichText,
 } from "../utils/chatDataFormatter";
 
 import { addMessage, setHistory } from "../redux/slices/chatSlice";
@@ -101,13 +101,24 @@ export default function useChatLogic({
   const contacts = useSelector((state) => state?.listUser?.list || []);
 
   const startForward = (payload) => {
-  const msg = payload?.message ?? payload;        
-  const preview = payload?.preview ?? null;
-  setForwardMsg(msg);
-  setForwardPreview(preview || getPurePreview?.(msg) || getMessagePreview?.(msg) || null);
-  setShowForwardModal(true);
-  };
+  try {
+    const msg = payload?.message ?? payload;
+    const preview = payload?.preview ?? null;
 
+    setForwardMsg(msg);
+
+    let pv = preview;
+    if (!pv) {
+      try { pv = getPurePreview?.(msg); } catch (_) {}
+      if (!pv) { try { pv = getMessagePreview?.(msg); } catch (_) {} }
+    }
+
+    setForwardPreview(pv || null);
+    setShowForwardModal(true);
+  } catch (e) {
+    console.error("[startForward] crash:", e);
+  }
+};
 
   const closeForward = () => {
     setForwardMsg(null);
@@ -209,6 +220,7 @@ export default function useChatLogic({
             text: parsed ? parsed.text : rawText || "",
             sender: from === currentUser ? "user" : "other", 
             actionTime: now,
+            rawMes: typeof parsed?.rawMes === "string" ? parsed.rawMes : rawText,
             time: formatVNDateTime(now),
             type: parsed?.type || "text",
             from,
@@ -216,6 +228,7 @@ export default function useChatLogic({
             url: parsed?.url || null,
             fileName: parsed?.fileName || null,
             meta: parsed?.meta || null,
+              blocks: parsed?.blocks || [],
           },
         })
       );
@@ -241,10 +254,12 @@ export default function useChatLogic({
 
           type: parsed?.type || m?.messageType || "text",
           from: m?.name,
+          rawMes: typeof parsed?.rawMes === "string" ? parsed.rawMes : (m?.mes || ""),
           to: m?.to,
           url: parsed?.url || m?.url || null,
           fileName: parsed?.fileName || null,
           meta: parsed?.meta || null,
+            blocks: parsed?.blocks || [],
         };
       };
 
@@ -397,6 +412,58 @@ export default function useChatLogic({
       setIsUploading(false);
     }
   };
+    const handleSendRichText = (editorRef) => {
+        const richJson = extractRichText(editorRef);
+        console.log(richJson)
+        if (!richJson) return;
+        if (!activeChat) return;
+
+        const now = Date.now();
+
+        let payload = JSON.stringify({
+            customType: "richText",
+            text: richJson.text,
+            blocks: richJson.blocks,
+        });
+
+        payload = attachReplyMeta(payload);
+        console.log(payload)
+        chatSocketServer.send(
+            "SEND_CHAT",
+            makeOutgoingPayload({
+                type: activeChat.type,
+                to: activeChat.name,
+                mes: payload,
+            })
+        );
+        dispatch(
+            addMessage({
+                chatKey,
+                message: {
+                    id: `local-${now}`,
+                    text: "",
+                    blocks: richJson.blocks,
+                    sender: "user",
+                    actionTime: now,
+                    time: formatVNDateTime(now),
+                    type: "richText",
+                    from: currentUser,
+                    to: activeChat.name,
+                    optimistic: true,
+                    meta: buildReplyMeta?.() || null,
+                },
+            })
+        );
+        dispatch(
+            setListUser({
+                name: activeChat.name,
+                lastMessage: richJson.text,
+                actionTime: now,
+                type: activeChat.type,
+            })
+        );
+    };
+
   const handleSend = () => {
     if (!activeChat) return;
 
@@ -593,7 +660,14 @@ export default function useChatLogic({
         },
       })
     );
-
+      dispatch(
+          setListUser({
+              name: activeChat.name,
+              lastMessage: "[GIF]",
+              actionTime: now,
+              type: activeChat.type,
+          })
+      );
     setReplyMsg(null);
   };
 
@@ -675,6 +749,7 @@ export default function useChatLogic({
       handleConfirmForward,
       handleSendPoll,
       handleSendPollVote,
+        handleSendRichText,
     },
   };
 }

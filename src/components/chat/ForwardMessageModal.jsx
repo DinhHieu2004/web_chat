@@ -20,22 +20,25 @@ function getInitials(name = "") {
 function PreviewBlock({ preview }) {
   if (!preview) return null;
 
-  // Nếu vẫn bị truyền string label như "[Sticker]" thì cứ hiển thị text
   if (typeof preview === "string") {
     return <div className="text-sm text-gray-700 truncate">{preview}</div>;
   }
 
-  const type = preview?.type || "text";
-  const text = preview?.text || "";
   const url = preview?.url || null;
-  const fileName = preview?.fileName || null;
+  const type = preview?.type || "text";
+  const textRaw = preview?.text;
+  const text =
+    typeof textRaw === "string"
+      ? textRaw
+      : typeof textRaw?.text === "string"
+      ? textRaw.text
+      : "";
+  const fileName = preview?.fileName || "";
 
-  // emoji
   if (type === "emoji") {
     return <div className="text-base leading-none">{text}</div>;
   }
 
-  // sticker / gif / image
   if ((type === "sticker" || type === "gif" || type === "image") && url) {
     return (
       <div className="flex items-center gap-2">
@@ -51,7 +54,6 @@ function PreviewBlock({ preview }) {
     );
   }
 
-  // audio (voice)
   if (type === "audio" && url) {
     return (
       <audio controls className="w-full max-w-[320px]">
@@ -60,7 +62,6 @@ function PreviewBlock({ preview }) {
     );
   }
 
-  // video
   if (type === "video" && url) {
     return (
       <video controls className="w-full max-w-[320px] rounded-md">
@@ -69,7 +70,6 @@ function PreviewBlock({ preview }) {
     );
   }
 
-  // file
   if (type === "file" && url) {
     return (
       <a
@@ -83,7 +83,6 @@ function PreviewBlock({ preview }) {
     );
   }
 
-  // fallback text
   return (
     <div className="text-sm text-gray-700 truncate max-w-[320px]">
       {text || "(Tin nhắn)"}
@@ -106,15 +105,11 @@ export default function ForwardMessageModal({
   useEffect(() => {
     if (!open) return;
 
-    const id = requestAnimationFrame(() => {
-      setSelected({});
-      setNote("");
-      setQ("");
-      setTab("recent");
-    });
-
-    return () => cancelAnimationFrame(id);
-  }, [open, messagePreview]);
+    setSelected({});
+    setNote("");
+    setQ("");
+    setTab("recent");
+  }, [open]);
 
   const MAX = 100;
 
@@ -130,7 +125,7 @@ export default function ForwardMessageModal({
       const name = getDisplayName(c);
       const type = normalizeType(c?.type);
       const id = c?.id ?? c?.userId ?? c?._id ?? name;
-      return { ...c, __name: name, __type: type, __key: `${type}:${id}` };
+      return { ...c, __name: name, __type: type, __key: `${type}:${name}` };
     });
   }, [contacts]);
 

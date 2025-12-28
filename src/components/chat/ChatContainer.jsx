@@ -9,7 +9,7 @@ import ChatArea from "./ChatArea";
 import useChatLogic from "../../hooks/useChatLogic";
 
 export default function ChatContainer() {
-    const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
   const { list, activeChatId } = useSelector((state) => state.listUser);
   const user = useSelector((state) => state.auth.user);
@@ -23,23 +23,23 @@ export default function ChatContainer() {
   });
 
   const isGroupChat = activeChat?.type === "room";
-    return (
-        <div className="flex h-screen bg-gray-100 p-2 overflow-hidden">
-            <Sidebar
-                searchTerm={chat.searchTerm}
-                setSearchTerm={chat.setSearchTerm}
-                onSelectContact={chat.handlers.handleChatSelect}
-            />
+  return (
+    <div className="flex h-screen bg-gray-100 p-2 overflow-hidden">
+      <Sidebar
+        searchTerm={chat.searchTerm}
+        setSearchTerm={chat.setSearchTerm}
+        onSelectContact={chat.handlers.handleChatSelect}
+      />
 
-            <div className="flex flex-col flex-1 min-h-0">
-                <div className="flex justify-end p-2">
-                    <button
-                        onClick={() => dispatch(logout())}
-                        className="px-4 py-2 bg-red-500 text-white rounded"
-                    >
-                        Logout
-                    </button>
-                </div>
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex justify-end p-2">
+          <button
+            onClick={() => dispatch(logout())}
+            className="px-4 py-2 bg-red-500 text-white rounded"
+          >
+            Đăng xuất
+          </button>
+        </div>
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <ChatArea
@@ -69,7 +69,7 @@ export default function ChatContainer() {
             onClose={chat.handlers.closeForward}
             onSend={chat.handlers.handleConfirmForward}
             contacts={chat.contacts}
-            messagePreview={chat.forwardPreview || chat.getPurePreview?.(chat.forwardMsg) || chat.getMessagePreview?.(chat.forwardMsg) || null}
+            messagePreview={chat.forwardPreview}
           />
 
           <ChatSearchPanel

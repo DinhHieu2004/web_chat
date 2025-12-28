@@ -26,17 +26,56 @@ export default function MessageItem({
     return { text: reply.preview };
   };
 
-  const buildPreviewForForward = (msg) => {
-    if (msg?.type === "forward" && msg?.meta?.forward?.preview) {
-      return msg.meta.forward.preview;
+  const buildPreviewForForward = (m) => {
+    if (m?.type === "forward" && m?.meta?.forward?.preview) {
+      return m.meta.forward.preview;
     }
 
     return {
-      type: msg?.type || "text",
-      text: typeof msg?.text === "string" ? msg.text : "",
-      url: msg?.url || null,
-      fileName: msg?.fileName || null,
+      type: m?.type || "text",
+      text: typeof m?.text === "string" ? m.text : m?.text?.text ?? "",
+      url: m?.url || null,
+      fileName: m?.fileName || null,
+      rawMes: typeof m?.rawMes === "string" ? m.rawMes : null,
     };
+  };
+
+  const renderRichText = () => {
+    const blocks = Array.isArray(msg?.blocks) ? msg.blocks : [];
+    if (blocks.length === 0) return null;
+
+    return (
+      <div className="flex flex-col gap-1">
+        {blocks.map((block, i) => (
+          <div key={i} style={{ whiteSpace: "pre-wrap" }}>
+            {Array.isArray(block?.spans) && block.spans.length > 0 ? (
+              block.spans.map((span, j) => {
+                const style = {
+                  fontWeight: span.styles?.bold ? "bold" : "normal",
+                  fontStyle: span.styles?.italic ? "italic" : "normal",
+                  textDecoration: [
+                    span.styles?.underline ? "underline" : "",
+                    span.styles?.strike ? "line-through" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" "),
+                  fontFamily: span.font || "inherit",
+                  color: span.color || "inherit",
+                  fontSize: span.fontSize || "inherit",
+                };
+                return (
+                  <span key={j} style={style}>
+                    {span.text}
+                  </span>
+                );
+              })
+            ) : (
+              <span>{block?.text || ""}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const renderContent = () => {
@@ -47,7 +86,8 @@ export default function MessageItem({
 
       const pvType = pv?.type || "text";
       const pvUrl = pv?.url || null;
-      const pvText = typeof pv?.text === "string" ? pv.text : "";
+      const pvText =
+        typeof pv?.text === "string" ? pv.text : pv?.text?.text ?? "";
       const pvFileName = pv?.fileName || null;
 
       return (
@@ -57,7 +97,7 @@ export default function MessageItem({
           )}
 
           {pvType === "emoji" && (
-            <div className="text-base leading-none">{pvText}</div>
+            <div className="text-base leading-none">{String(pvText || "")}</div>
           )}
 
           {pvType === "sticker" && pvUrl && (
@@ -109,7 +149,7 @@ export default function MessageItem({
             </a>
           )}
 
-          {pvType !== "emoji" && pvText.trim() && (
+          {pvType !== "emoji" && pvType !== "richText" && pvText.trim() && (
             <p className="text-sm break-words whitespace-pre-wrap">{pvText}</p>
           )}
         </div>
@@ -179,6 +219,10 @@ export default function MessageItem({
           />
         )}
 
+        {finalType === "richText" &&
+          Array.isArray(msg?.blocks) &&
+          msg.blocks.length > 0 && <div>{renderRichText()}</div>}
+
         {finalType === "image" && finalUrl && (
           <img
             src={finalUrl}
@@ -212,9 +256,13 @@ export default function MessageItem({
           </a>
         )}
 
-        {finalType !== "emoji" && safeText.trim() && (
-          <p className="text-sm break-words whitespace-pre-wrap">{safeText}</p>
-        )}
+        {finalType !== "emoji" &&
+          finalType !== "richText" &&
+          safeText.trim() && (
+            <p className="text-sm break-words whitespace-pre-wrap">
+              {safeText}
+            </p>
+          )}
       </div>
     );
   };

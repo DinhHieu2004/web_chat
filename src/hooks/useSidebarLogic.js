@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getList, setActiveChat, setListUser, setUserOnlineStatus } from "../redux/slices/listUserSlice";
 import { chatSocketServer } from "../services/socket";
+import { tryParseCustomPayload } from "../utils/chatDataFormatter.js";
 
 export default function useSidebarLogic(searchTerm, onSelectContact) {
     const dispatch = useDispatch();
@@ -9,6 +10,22 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     const { isAuthenticated, user } = useSelector((state) => state.auth);
     const bootedRef = useRef(false);
 
+    const getSidebarPreview = (mes) => {
+        const parsed = tryParseCustomPayload(
+            typeof mes === "string" ? mes : mes?.mes
+        );
+
+        if (!parsed) {
+            return typeof mes === "string" ? mes : "";
+        }
+        const { type, text, fileName } = parsed;
+
+        if (["image", "video", "gif", "sticker", "audio"].includes(type)) {
+            return `[${type.toUpperCase()}]`;
+        }
+        if (type === "file") return fileName || "[File]";
+        if (type === "richText") return text;
+    };
     useEffect(() => {
         if (bootedRef.current) return;
         bootedRef.current = true;
@@ -21,18 +38,15 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
         if (!user) return;
 
         const onChat = (payload) => {
-            console.log(payload);
             const d = payload?.data?.data || payload?.data || payload || {};
             const { type, name, to, mes } = d;
             if (!mes) return;
-            console.log(d);
             const key = type === "room" ? to : name === user ? to : name;
-            console.log(key);
             if (!key) return;
-
+            const preview = getSidebarPreview(mes);
             dispatch(setListUser({
                 name: key,
-                lastMessage: mes,
+                lastMessage: preview,
                 actionTime: Date.now(),
                 type: type === 1 ? "room" : "people",
             }));
@@ -77,7 +91,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
         // chatSocketServer.on("CHECK_USER_ONLINE", onCheckOnline);
 
         return () => {
-            chatSocketServer.off("CHECK_USER_ONLINE", onCheckOnline);
+            // chatSocketServer.off("CHECK_USER_ONLINE", onCheckOnline);
             seqResolverRef.current = null;
         };
     }, [user, dispatch]);
@@ -101,7 +115,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
                     // Install resolver and send request. If no response within timeout, assume offline.
                     seqResolverRef.current = (val) => resolve(!!val);
                     try {
-                        chatSocketServer.send("CHECK_USER_ONLINE", { user: item.name });
+                        // chatSocketServer.send("CHECK_USER_ONLINE", { user: item.name });
                     } catch (e) {
                         seqResolverRef.current = null;
                         resolve(false);

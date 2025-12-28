@@ -85,6 +85,7 @@ export const parseCustomMessage = (mes) => {
 
   try {
     const parsed = JSON.parse(mes);
+
     if (parsed?.customType === "poll" && parsed?.payload) {
       return {
         type: "poll",
@@ -99,10 +100,10 @@ export const parseCustomMessage = (mes) => {
         url: parsed.url,
         fileName: parsed.fileName || null,
         meta: parsed.meta || null,
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
       };
     }
 
-    // emoji
     if (parsed?.customType === "emoji" && Array.isArray(parsed.cps)) {
       const text = parsed.cps
         .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
@@ -114,6 +115,7 @@ export const parseCustomMessage = (mes) => {
         url: null,
         fileName: null,
         meta: parsed.meta || null,
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
       };
     }
 
@@ -124,6 +126,7 @@ export const parseCustomMessage = (mes) => {
         url: parsed.url || null,
         fileName: parsed.fileName || null,
         meta: parsed.meta || null,
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
       };
     }
   } catch (e) {
@@ -143,6 +146,7 @@ export const tryParseCustomPayload = (text) => {
 
     if (ct === "poll" && parsed?.payload) {
       return {
+        customType: "poll",
         type: "poll",
         poll: parsed.payload,
       };
@@ -159,10 +163,11 @@ export const tryParseCustomPayload = (text) => {
         text: emojiText,
         fileName: null,
         meta: parsed.meta || null,
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
+        rawMes: text,
       };
     }
 
-  
     if (ct === "forward") {
       return {
         type: "forward",
@@ -170,6 +175,7 @@ export const tryParseCustomPayload = (text) => {
         text: typeof parsed.text === "string" ? parsed.text : "",
         fileName: parsed.fileName || null,
         meta: parsed.meta || null,
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
       };
     }
 
@@ -180,7 +186,8 @@ export const tryParseCustomPayload = (text) => {
         text: typeof parsed.text === "string" ? parsed.text : "",
         fileName: parsed.fileName || null,
         meta: parsed.meta || null,
-        poll: parsed.payload || null, 
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
+        poll: parsed.payload || null,
       };
     }
   } catch (_) {}
@@ -292,21 +299,37 @@ export const previewToText = (msg) => {
   }
 };
 
+const safeStr = (v) => (typeof v === "string" ? v : "");
+const safeObj = (v) => (v && typeof v === "object" ? v : null);
+
+const makePreviewText = (origin) => {
+  if (typeof origin?.rawMes === "string" && origin.rawMes) return origin.rawMes;
+
+  const t = safeStr(origin?.text) || safeStr(origin?.text?.text);
+  if (origin?.type === "emoji" && t) return buildEmojiMessage(t);
+
+  return t;
+};
+
 export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
+  const originMsgObj = safeObj(originMsg) || {};
+  const originChatObj = safeObj(originChat) || {};
+
+  const previewFromForward = safeObj(originMsgObj?.meta?.forward?.preview);
   const origin =
-    originMsg?.type === "forward" && originMsg?.meta?.forward?.preview
-      ? originMsg.meta.forward.preview
-      : originMsg;
+    originMsgObj?.type === "forward" && previewFromForward
+      ? previewFromForward
+      : originMsgObj;
+  let p = null;
+  let previewLabel = "";
+  try {
+    p = getMessagePreview(origin);
+  } catch (_) {}
+  try {
+    previewLabel = previewToText(origin);
+  } catch (_) {}
 
-  const p = getMessagePreview(origin);
-  const previewLabel = previewToText(origin);
-
-  const rawText =
-    typeof origin?.text === "string"
-      ? origin.text
-      : typeof origin?.text?.text === "string"
-      ? origin.text.text
-      : "";
+  const rawText = makePreviewText(origin);
 
   return JSON.stringify({
     customType: "forward",
@@ -315,22 +338,93 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
     fileName: p?.fileName || null,
     meta: {
       forward: {
-        fromChat: originChat?.name || "",
-        fromType: originChat?.type || "",
-        originalFrom: originMsg?.from || "",
-        originalType: origin?.type || "text",
-
+        fromChat: safeStr(originChatObj?.name),
+        fromType: safeStr(originChatObj?.type),
+        originalFrom: safeStr(originMsgObj?.from),
+        originalType: safeStr(origin?.type) || "text",
         preview: {
           type: p?.type || origin?.type || "text",
-          text: rawText,             
-          url: p?.url || null,      
+          text: safeStr(origin?.text) || safeStr(origin?.text?.text) || "", 
+          rawMes: rawText, 
+          url: p?.url || null,
           fileName: p?.fileName || null,
         },
-
-        previewLabel,              
+        previewLabel: String(previewLabel || ""),
         note: String(note || ""),
       },
     },
   });
 };
 
+export const extractRichText = (
+  editor,
+  defaultFont = "Arial",
+  defaultColor = "#000000"
+) => {
+  if (!editor) return null;
+
+  const blocks = [];
+  let plainText = "";
+
+  const createBlockIfNeeded = () => {
+    if (blocks.length === 0 || !blocks[blocks.length - 1]) {
+      blocks.push({ spans: [] });
+    }
+  };
+
+  const traverse = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.nodeValue;
+      if (!text) return;
+
+      const parent = node.parentElement || editor;
+      const style = window.getComputedStyle(parent);
+
+      const span = { text };
+      const styles = {};
+
+      if (
+        style.fontWeight === "700" ||
+        (style.fontWeight && parseInt(style.fontWeight, 10) >= 700)
+      )
+        styles.bold = true;
+      if (style.fontStyle === "italic") styles.italic = true;
+      if (style.textDecoration.includes("underline")) styles.underline = true;
+      if (style.textDecoration.includes("line-through")) styles.strike = true;
+      if (Object.keys(styles).length) span.styles = styles;
+
+      const font = style.fontFamily
+        .split(",")[0]
+        .trim()
+        .replace(/^['"]|['"]$/g, "");
+      if (font && font !== defaultFont) span.font = font;
+
+      const color = style.color;
+      if (color && color !== defaultColor) span.color = color;
+
+      const fontSize = style.fontSize;
+      if (fontSize) span.fontSize = fontSize;
+
+      createBlockIfNeeded();
+      blocks[blocks.length - 1].spans.push(span);
+      plainText += text;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.nodeName === "BR") {
+        blocks.push({ spans: [] });
+        plainText += "\n";
+      } else if (["DIV", "P"].includes(node.nodeName)) {
+        blocks.push({ spans: [] });
+        node.childNodes.forEach(traverse);
+        blocks.push(null);
+        plainText += "\n";
+      } else {
+        node.childNodes.forEach(traverse);
+      }
+    }
+  };
+
+  editor.childNodes.forEach(traverse);
+  const finalBlocks = blocks.filter((b) => b && b.spans.length > 0);
+
+  return { blocks: finalBlocks, text: plainText };
+};
