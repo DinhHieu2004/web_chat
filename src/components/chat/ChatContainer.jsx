@@ -66,7 +66,6 @@ export default function ChatContainer() {
             isGroupChat={isGroupChat}
             typing={chat.typing}
           />
-
           <ForwardMessageModal
             open={chat.showForwardModal}
             onClose={chat.handlers.closeForward}

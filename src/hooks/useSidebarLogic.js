@@ -15,21 +15,6 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const bootedRef = useRef(false);
 
-  const cpsJsonToEmoji = (raw) => {
-    if (typeof raw !== "string") return "";
-    const s = raw.trim();
-    if (!s.startsWith("{")) return "";
-    try {
-      const obj = JSON.parse(s);
-      if (obj?.customType === "emoji" && Array.isArray(obj?.cps)) {
-        return obj.cps
-          .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
-          .join("");
-      }
-    } catch (_) {}
-    return "";
-  };
-
   const decodeEmojiFromCpsJson = (raw) => {
     if (typeof raw !== "string") return "";
     const s = raw.trim();
@@ -45,27 +30,27 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     return "";
   };
 
+  const cpsToEmoji = (cps) => {
+    if (!Array.isArray(cps)) return "";
+    try {
+      return cps.map((hex) => String.fromCodePoint(parseInt(hex, 16))).join("");
+    } catch {
+      return "";
+    }
+  };
+
   const getSidebarPreview = (mes) => {
     const raw = typeof mes === "string" ? mes : mes?.mes;
     const parsed = tryParseCustomPayload(raw);
 
     if (!parsed) return typeof raw === "string" ? raw : "";
-
     if (parsed.type === "forward") {
       const pv = parsed?.meta?.forward?.preview || {};
       const pvType = pv?.type;
-      if (pvType === "emoji") {
-        const cps = Array.isArray(pv?.cps) ? pv.cps : null;
-        const emojiFromCps = cps
-          ? cps.map((hex) => String.fromCodePoint(parseInt(hex, 16))).join("")
-          : "";
-
-        const emoji = emojiFromCps || decodeEmojiFromCpsJson(pv?.text);
-        return emoji ? `Đã chuyển tiếp ${emoji}` : "Đã chuyển tiếp";
-      }
 
       if (pvType === "emoji") {
-        const emoji = decodeEmojiFromCpsJson(pv?.text);
+        const emoji =
+          cpsToEmoji(pv?.cps) || decodeEmojiFromCpsJson(pv?.text);
         return emoji ? `Đã chuyển tiếp ${emoji}` : "Đã chuyển tiếp";
       }
 
@@ -74,6 +59,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
       if (pvType === "gif") return "Đã chuyển tiếp một GIF";
       if (pvType === "sticker") return "Đã chuyển tiếp một sticker";
       if (pvType === "file") return "Đã chuyển tiếp một tệp";
+      if (pvType === "richText") return "Đã chuyển tiếp một văn bản";
 
       if (typeof pv?.text === "string" && pv.text.trim()) {
         return `Đã chuyển tiếp: ${pv.text}`;
@@ -81,23 +67,22 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
 
       return "Đã chuyển tiếp";
     }
-    const { type, text, fileName } = parsed;
+    const { type, text } = parsed;
 
     if (type === "image") return "Đã gửi một ảnh";
     if (type === "video") return "Đã gửi một video";
     if (type === "gif") return "Đã gửi một GIF";
     if (type === "sticker") return "Đã gửi một sticker";
     if (type === "file") return "Đã gửi một tệp";
-
     if (type === "emoji") return text;
     if (type === "richText") return text || "";
 
     return text || "";
   };
-
   useEffect(() => {
     if (bootedRef.current) return;
     bootedRef.current = true;
+
     if (isAuthenticated) {
       dispatch(getList());
     }
@@ -132,18 +117,12 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
       chatSocketServer.off("SEND_CHAT", onChat);
     };
   }, [user, dispatch]);
-
-  // Presence handling: support both server-push (with username) and request/response
-  // We'll also implement a sequential checker that queries the server for each user
-  // (one at a time) so we can match responses even if the server does not echo the username.
   const seqResolverRef = useRef(null);
 
   useEffect(() => {
     if (!user) return;
 
     const onCheckOnline = (payload) => {
-      // payload shape might be: { status: 'success', data: { status: false }, event: 'CHECK_USER_ONLINE' }
-      // or might include the user: { status: 'success', data: { user: 'ti', status: true }, event: 'CHECK_USER_ONLINE' }
       const p = payload || {};
       const body = p.data || p;
 
@@ -162,7 +141,6 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
         return;
       }
 
-      // No explicit user: treat this as the response to the sequential request
       if (seqResolverRef.current) {
         seqResolverRef.current(!!statusVal);
         seqResolverRef.current = null;
@@ -177,7 +155,6 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     };
   }, [user, dispatch]);
 
-  // When the list changes, perform sequential checks for non-room users
   useEffect(() => {
     if (!user || !Array.isArray(list) || list.length === 0) return;
 
@@ -189,12 +166,11 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
         if (item.type === "room") continue;
 
         const online = await new Promise((resolve) => {
-          // Install resolver and send request. If no response within timeout, assume offline.
           seqResolverRef.current = (val) => resolve(!!val);
 
           try {
             // chatSocketServer.send("CHECK_USER_ONLINE", { user: item.name });
-          } catch (e) {
+          } catch {
             seqResolverRef.current = null;
             resolve(false);
             return;
@@ -211,7 +187,6 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
         if (cancelled) break;
         dispatch(setUserOnlineStatus({ name: item.name, online }));
 
-        // Short delay between requests to avoid spamming server
         await new Promise((r) => setTimeout(r, 150));
       }
     };
@@ -226,7 +201,9 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
 
   const filtered = useMemo(() => {
     return list.filter((c) =>
-      (c.name || "").toLowerCase().includes((searchTerm || "").toLowerCase())
+      (c.name || "")
+        .toLowerCase()
+        .includes((searchTerm || "").toLowerCase())
     );
   }, [list, searchTerm]);
 
