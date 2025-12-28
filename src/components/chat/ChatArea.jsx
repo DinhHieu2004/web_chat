@@ -18,6 +18,7 @@ export default function ChatArea({
     isGroupChat,
     toggleSearchPanel,
     messageRefs,
+    typing,
     ...rest
 }) {
     return (
@@ -43,6 +44,23 @@ export default function ChatArea({
                     }}
                 />
             )}
+            {
+                typing && Object.keys(typing).length > 0 && (
+                    <div className="px-4 py-1 flex items-center gap-2 text-xs text-blue-500 italic font-medium bg-white/50 animate-fade-in">
+                        <div className="flex gap-1">
+                            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></span>
+                            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                        </div>
+                        <span>
+                            {Object.entries(typing)
+                                .filter(([_, isTyping]) => isTyping)
+                                .map(([user]) => user)
+                                .join(', ')} đang nhập...
+                        </span>
+                    </div>
+                )
+            }
 
             <ChatInput
                 input={input}
