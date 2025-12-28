@@ -5,15 +5,16 @@ import { uploadFileToS3 } from "../services/fileUploader";
 import { usePollActions } from "./handleSendPoll";
 //import { useTypingLogic } from "./useTypingLogic";
 import {
-    tryParseCustomPayload,
-    buildEmojiMessage,
-    makeOutgoingPayload,
-    makeChatKeyFromActive,
-    formatVNDateTime,
-    makeChatKeyFromWs,
-    getMessagePreview,
-    getPurePreview,
-    hasEmoji,
+  tryParseCustomPayload,
+  buildEmojiMessage,
+  makeOutgoingPayload,
+  makeChatKeyFromActive,
+  formatVNDateTime,
+  makeChatKeyFromWs,
+  getMessagePreview,
+  getPurePreview,
+  hasEmoji, extractRichText,
+
 } from "../utils/chatDataFormatter";
 
 import { addMessage, setHistory } from "../redux/slices/chatSlice";
@@ -180,6 +181,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
                         url: parsed?.url || null,
                         fileName: parsed?.fileName || null,
                         meta: parsed?.meta || null,
+                        blocks: parsed?.blocks || [],
                     },
                 })
             );
@@ -224,6 +226,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
                     url: parsed?.url || m?.url || null,
                     fileName: parsed?.fileName || null,
                     meta: parsed?.meta || null,
+                    blocks: parsed?.blocks || [],
                 };
             };
 
@@ -377,6 +380,58 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
             setIsUploading(false);
         }
     };
+  const handleSendRichText = (editorRef) => {
+        const richJson = extractRichText(editorRef);
+        console.log(richJson)
+        if (!richJson) return;
+        if (!activeChat) return;
+
+        const now = Date.now();
+
+        let payload = JSON.stringify({
+            customType: "richText",
+            text: richJson.text,
+            blocks: richJson.blocks,
+        });
+
+        payload = attachReplyMeta(payload);
+        console.log(payload)
+        chatSocketServer.send(
+            "SEND_CHAT",
+            makeOutgoingPayload({
+                type: activeChat.type,
+                to: activeChat.name,
+                mes: payload,
+            })
+        );
+        dispatch(
+            addMessage({
+                chatKey,
+                message: {
+                    id: `local-${now}`,
+                    text: "",
+                    blocks: richJson.blocks,
+                    sender: "user",
+                    actionTime: now,
+                    time: formatVNDateTime(now),
+                    type: "richText",
+                    from: currentUser,
+                    to: activeChat.name,
+                    optimistic: true,
+                    meta: buildReplyMeta?.() || null,
+                },
+            })
+        );
+        dispatch(
+            setListUser({
+                name: activeChat.name,
+                lastMessage: richJson.text,
+                actionTime: now,
+                type: activeChat.type,
+            })
+        );
+    };
+
     const handleSend = () => {
         if (!activeChat) return;
 
@@ -577,9 +632,18 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
             })
         );
 
+
+      dispatch(
+          setListUser({
+              name: activeChat.name,
+              lastMessage: "[GIF]",
+              actionTime: now,
+              type: activeChat.type,
+          })
+      );
+
         setReplyMsg(null);
     };
-
     const loadHistory = (page = 1, chat = activeChat) => {
         if (!chat) return;
         chatSocketServer.send(
@@ -587,7 +651,6 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
             { name: chat.name, page }
         );
     };
-
     const handleChatSelect = (contact) => {
         setActiveChat(contact);
         loadHistory(1, contact);
@@ -595,6 +658,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
         setShowStickerPicker(false);
         setShowGroupMenu(false);
     };
+
 
     return {
         activeChat,
@@ -654,6 +718,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
             startReply,
             handleSendPoll,
             handleSendPollVote,
+            handleSendRichText,
         },
     };
 }
