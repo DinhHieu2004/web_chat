@@ -139,7 +139,6 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser,
 
     useEffect(() => {
         const onIncoming = (data) => {
-            // Normalize payload from different server shapes
             const d = data?.data?.data || data?.data || data || {};
             const from = d?.name || d?.from || d?.fromUser || null;
             const to = d?.to || null;
