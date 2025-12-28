@@ -1,6 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { setActiveChat } from "../../redux/slices/listUserSlice";
+
 import ChatSearchPanel from "./ChatSearchPanel";
 import ForwardMessageModal from "./ForwardMessageModal";
 
@@ -23,6 +24,7 @@ export default function ChatContainer() {
   });
 
   const isGroupChat = activeChat?.type === "room";
+
   return (
     <div className="flex h-screen bg-gray-100 p-2 overflow-hidden">
       <Sidebar
@@ -62,6 +64,7 @@ export default function ChatContainer() {
             gotoPrevMatch={chat.gotoPrevMatch}
             messageRefs={chat.messageRefs}
             isGroupChat={isGroupChat}
+            typing={chat.typing}
           />
 
           <ForwardMessageModal

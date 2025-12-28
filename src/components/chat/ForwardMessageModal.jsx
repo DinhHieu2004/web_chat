@@ -17,6 +17,43 @@ function getInitials(name = "") {
   return parts.map((p) => p[0]?.toUpperCase()).join("");
 }
 
+const decodeEmojiFromCpsJson = (raw) => {
+  if (typeof raw !== "string") return "";
+  const s = raw.trim();
+  if (!s.startsWith("{")) return "";
+  try {
+    const obj = JSON.parse(s);
+    if (obj?.customType === "emoji" && Array.isArray(obj?.cps)) {
+      return obj.cps
+        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .join("");
+    }
+  } catch (_) {}
+  return "";
+};
+
+const cpsToEmoji = (cps) => {
+  if (!Array.isArray(cps)) return "";
+  try {
+    return cps.map((hex) => String.fromCodePoint(parseInt(hex, 16))).join("");
+  } catch (_) {
+    return "";
+  }
+};
+
+const richBlocksToPlain = (blocks) => {
+  const arr = Array.isArray(blocks) ? blocks : [];
+  return arr
+    .map((b) => {
+      if (Array.isArray(b?.spans) && b.spans.length > 0) {
+        return b.spans.map((s) => s?.text || "").join("");
+      }
+      return b?.text || "";
+    })
+    .join("\n")
+    .trim();
+};
+
 function PreviewBlock({ preview }) {
   if (!preview) return null;
 
@@ -36,7 +73,23 @@ function PreviewBlock({ preview }) {
   const fileName = preview?.fileName || "";
 
   if (type === "emoji") {
-    return <div className="text-base leading-none">{text}</div>;
+    const emojiFromCps = cpsToEmoji(preview?.cps);
+    const emojiFromJson = decodeEmojiFromCpsJson(text);
+    const display = emojiFromCps || emojiFromJson || text || "[Emoji]";
+
+    return <div className="text-base leading-none">{display}</div>;
+  }
+
+  if (type === "richText") {
+    const blocks = Array.isArray(preview?.blocks) ? preview.blocks : [];
+    const plain = blocks.length ? richBlocksToPlain(blocks) : "";
+    const display = plain || text || "[Văn bản]";
+
+    return (
+      <div className="text-sm text-gray-700 max-w-[320px]">
+        <div className="truncate">{display}</div>
+      </div>
+    );
   }
 
   if ((type === "sticker" || type === "gif" || type === "image") && url) {
@@ -124,7 +177,6 @@ export default function ForwardMessageModal({
     return base.map((c) => {
       const name = getDisplayName(c);
       const type = normalizeType(c?.type);
-      const id = c?.id ?? c?.userId ?? c?._id ?? name;
       return { ...c, __name: name, __type: type, __key: `${type}:${name}` };
     });
   }, [contacts]);
@@ -177,6 +229,7 @@ export default function ForwardMessageModal({
           <button
             onClick={onClose}
             className="h-7 w-7 rounded hover:bg-gray-100 text-sm"
+            type="button"
           >
             ✕
           </button>
@@ -218,6 +271,7 @@ export default function ForwardMessageModal({
                   ? "text-blue-600 border-b-2 border-blue-600 pb-1"
                   : "text-gray-600 pb-1"
               }
+              type="button"
             >
               {t.label}
             </button>
@@ -239,6 +293,7 @@ export default function ForwardMessageModal({
                   key={c.__key}
                   onClick={() => toggleOne(c)}
                   className="w-full px-4 py-2 flex items-center gap-3 text-left hover:bg-gray-50"
+                  type="button"
                 >
                   <input
                     type="checkbox"
@@ -279,7 +334,11 @@ export default function ForwardMessageModal({
                 <span>
                   Đã chọn {selectedCount}/{MAX}
                 </span>
-                <button onClick={clearAll} className="text-blue-600 text-sm">
+                <button
+                  onClick={clearAll}
+                  className="text-blue-600 text-sm"
+                  type="button"
+                >
                   Xóa
                 </button>
               </div>
@@ -331,6 +390,7 @@ export default function ForwardMessageModal({
           <button
             onClick={onClose}
             className="px-3 h-8 rounded-md border border-gray-200/60 text-sm"
+            type="button"
           >
             Hủy
           </button>
@@ -338,6 +398,7 @@ export default function ForwardMessageModal({
             disabled={!selectedCount}
             onClick={handleSend}
             className="px-3 h-8 rounded-md bg-blue-600 text-white text-sm disabled:bg-blue-300"
+            type="button"
           >
             Chia sẻ
           </button>

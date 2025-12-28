@@ -4,6 +4,7 @@ import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
 import { buildForwardMessage } from "../utils/chatDataFormatter";
 import { usePollActions } from "./handleSendPoll";
+
 import {
   tryParseCustomPayload,
   buildEmojiMessage,
@@ -13,7 +14,8 @@ import {
   makeChatKeyFromWs,
   getMessagePreview,
   getPurePreview,
-  hasEmoji, extractRichText,
+  hasEmoji,
+  extractRichText,
 } from "../utils/chatDataFormatter";
 
 import { addMessage, setHistory } from "../redux/slices/chatSlice";
@@ -63,13 +65,110 @@ export default function useChatLogic({
     chatKey ? selectMessagesByChatKey(chatKey) : () => []
   );
 
-  // search query + filters
+  // ---------- FORWARD ----------
+  const [forwardMsg, setForwardMsg] = useState(null);
+  const [forwardPreview, setForwardPreview] = useState(null);
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const contacts = useSelector((state) => state?.listUser?.list || []);
+
+  const startForward = (payload) => {
+    try {
+      const msg = payload?.message ?? payload;
+      const preview = payload?.preview ?? null;
+
+      setForwardMsg(msg);
+
+      let pv = preview;
+      if (!pv) {
+        try {
+          pv = getPurePreview?.(msg);
+        } catch (_) {}
+        if (!pv) {
+          try {
+            pv = getMessagePreview?.(msg);
+          } catch (_) {}
+        }
+      }
+
+      setForwardPreview(pv || { type: "text", text: "" });
+      setShowForwardModal(true);
+    } catch (e) {
+      console.error("[startForward] crash:", e);
+    }
+  };
+
+  const closeForward = () => {
+    setForwardMsg(null);
+    setForwardPreview(null);
+    setShowForwardModal(false);
+  };
+
+  const handleConfirmForward = ({ selectedMap, note }) => {
+    if (!forwardMsg || !activeChat) return;
+
+    const payloadText = buildForwardMessage({
+      originMsg: forwardMsg,
+      originChat: activeChat,
+      note,
+    });
+
+    const keys = Object.keys(selectedMap || {}).filter((k) => selectedMap[k]);
+    const parsedForward = tryParseCustomPayload(payloadText);
+    const now = Date.now();
+
+    keys.forEach((k) => {
+      const [type, name] = String(k).split(":");
+      if (!type || !name) return;
+
+      const outgoing = makeOutgoingPayload({
+        type: type === "room" ? "room" : "people",
+        to: name,
+        mes: payloadText,
+      });
+
+      chatSocketServer.send("SEND_CHAT", outgoing);
+      const targetChatKey = type === "room" ? `group:${name}` : `user:${name}`;
+
+      dispatch(
+        addMessage({
+          chatKey: targetChatKey,
+          message: {
+            id: `local-forward-${now}-${Math.random()}`,
+            text: parsedForward?.text || "[Forward]",
+            sender: "user",
+            actionTime: now,
+            time: formatVNDateTime(now),
+            type: parsedForward?.type || "forward",
+            from: currentUser,
+            to: name,
+            rawMes: payloadText,
+            meta: parsedForward?.meta || null,
+            url: parsedForward?.url || null,
+            fileName: parsedForward?.fileName || null,
+            optimistic: true,
+          },
+        })
+      );
+
+      dispatch(
+        setListUser({
+          name,
+          lastMessage: parsedForward?.text || "[Forward]",
+          actionTime: now,
+          type: type === "room" ? "room" : "people",
+        })
+      );
+    });
+
+    closeForward();
+  };
+
+  // ---------- SEARCH QUERY + FILTERS ----------
   const norm = (s = "") => String(s).toLowerCase().trim();
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [senderFilter, setSenderFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("ALL");
 
-  // match index + refs (scroll to message)
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const messageRefs = useRef({});
 
@@ -84,74 +183,16 @@ export default function useChatLogic({
     [matchedMessages]
   );
 
-  const senderOptions = useMemo(() => {
-    return buildSenderOptions(messages || []);
-  }, [messages]);
+  const senderOptions = useMemo(
+    () => buildSenderOptions(messages || []),
+    [messages]
+  );
 
   const filteredResults = useMemo(() => {
     return (matchedMessages || []).filter(
       (m) => filterBySender(m, senderFilter) && filterByDate(m, dateFilter)
     );
   }, [matchedMessages, senderFilter, dateFilter]);
-
-  // foward
-  const [forwardMsg, setForwardMsg] = useState(null);
-  const [forwardPreview, setForwardPreview] = useState(null);
-  const [showForwardModal, setShowForwardModal] = useState(false);
-  const contacts = useSelector((state) => state?.listUser?.list || []);
-
-  const startForward = (payload) => {
-  try {
-    const msg = payload?.message ?? payload;
-    const preview = payload?.preview ?? null;
-
-    setForwardMsg(msg);
-
-    let pv = preview;
-    if (!pv) {
-      try { pv = getPurePreview?.(msg); } catch (_) {}
-      if (!pv) { try { pv = getMessagePreview?.(msg); } catch (_) {} }
-    }
-
-    setForwardPreview(pv || null);
-    setShowForwardModal(true);
-  } catch (e) {
-    console.error("[startForward] crash:", e);
-  }
-};
-
-  const closeForward = () => {
-    setForwardMsg(null);
-    setForwardPreview(null);
-    setShowForwardModal(false);
-  };
-
-  const handleConfirmForward = ({ selectedMap, note }) => {
-    if (!forwardMsg) return;
-
-    const payloadText = buildForwardMessage({
-      originMsg: forwardMsg,
-      originChat: activeChat,
-      note,
-    });
-
-    const keys = Object.keys(selectedMap || {}).filter((k) => selectedMap[k]);
-    keys.forEach((k) => {
-      const [type, name] = k.split(":");
-      if (!type || !name) return;
-
-      chatSocketServer.send(
-        "SEND_CHAT",
-        makeOutgoingPayload({
-          type: type === "room" ? "room" : "people",
-          to: name,
-          mes: payloadText,
-        })
-      );
-    });
-
-    closeForward();
-  };
 
   useEffect(() => {
     setActiveMatchIndex(0);
@@ -179,38 +220,41 @@ export default function useChatLogic({
 
   const gotoNextMatch = () => {
     if (!matchIds.length) return;
-    const next = (activeMatchIndex + 1) % matchIds.length;
-    scrollToMatchIndex(next);
+    scrollToMatchIndex((activeMatchIndex + 1) % matchIds.length);
   };
 
   const gotoPrevMatch = () => {
     if (!matchIds.length) return;
-    const prev = (activeMatchIndex - 1 + matchIds.length) % matchIds.length;
-    scrollToMatchIndex(prev);
+    scrollToMatchIndex(
+      (activeMatchIndex - 1 + matchIds.length) % matchIds.length
+    );
   };
 
+  // ---------- SCROLL TO BOTTOM ----------
   const messagesEndRef = useRef(null);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ---------- SOCKET INCOMING + HISTORY ----------
   useEffect(() => {
+    if (!currentUser) return;
+
     const onIncoming = (payload) => {
       const d = payload?.data?.data || payload?.data || payload || {};
       const { name, from: fromRaw, to, mes, type } = d;
 
-      const from = fromRaw || name; 
+      const from = fromRaw || name;
+      const rawText =
+        typeof mes === "string" ? mes : mes?.mes ?? mes?.text ?? "";
 
       const parsed = tryParseCustomPayload(
         typeof mes === "string" ? mes : mes?.mes
       );
-
       const incomingKey = makeChatKeyFromWs({ type, from, to, currentUser });
+      if (!incomingKey) return;
 
       const now = Date.now();
-      const rawText =
-        typeof mes === "string" ? mes : mes?.mes ?? mes?.text ?? "";
 
       dispatch(
         addMessage({
@@ -218,20 +262,33 @@ export default function useChatLogic({
           message: {
             id: now + Math.random(),
             text: parsed ? parsed.text : rawText || "",
-            sender: from === currentUser ? "user" : "other", 
+            sender: from === currentUser ? "user" : "other",
             actionTime: now,
-            rawMes: typeof parsed?.rawMes === "string" ? parsed.rawMes : rawText,
             time: formatVNDateTime(now),
             type: parsed?.type || "text",
             from,
             to,
+            rawMes:
+              typeof parsed?.rawMes === "string" ? parsed.rawMes : rawText,
             url: parsed?.url || null,
             fileName: parsed?.fileName || null,
             meta: parsed?.meta || null,
-              blocks: parsed?.blocks || [],
+            blocks: parsed?.blocks || [],
           },
         })
       );
+
+      try {
+        const contactName = incomingKey.split(":")[1];
+        dispatch(
+          setListUser({
+            name: contactName,
+            lastMessage: parsed ? parsed.text : rawText || "",
+            actionTime: now,
+            type: type === "room" || type === 1 ? "room" : "people",
+          })
+        );
+      } catch (_) {}
     };
 
     const onHistory = (payload) => {
@@ -240,6 +297,7 @@ export default function useChatLogic({
 
       const mapHistoryMessage = (m) => {
         const parsed = tryParseCustomPayload(m?.mes);
+        if (parsed?.customType === "typing") return null;
 
         const ts = m?.createAt ? Date.parse(m.createAt) : 0;
         const actionTime = Number.isNaN(ts) ? 0 : ts;
@@ -248,29 +306,31 @@ export default function useChatLogic({
           id: m?.id ?? (actionTime || Date.now() + Math.random()),
           text: parsed ? parsed.text : m?.mes || "",
           sender: m?.name === currentUser ? "user" : "other",
-
           actionTime,
           time: formatVNDateTime(m?.createAt || actionTime || Date.now()),
-
           type: parsed?.type || m?.messageType || "text",
           from: m?.name,
-          rawMes: typeof parsed?.rawMes === "string" ? parsed.rawMes : (m?.mes || ""),
           to: m?.to,
+          rawMes:
+            typeof parsed?.rawMes === "string" ? parsed.rawMes : m?.mes || "",
           url: parsed?.url || m?.url || null,
           fileName: parsed?.fileName || null,
           meta: parsed?.meta || null,
-            blocks: parsed?.blocks || [],
+          blocks: parsed?.blocks || [],
         };
       };
 
       if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
         const otherUser =
           data[0]?.name === currentUser ? data[0]?.to : data[0]?.name;
-
         dispatch(
           setHistory({
             chatKey: `user:${otherUser}`,
-            messages: data.slice().reverse().map(mapHistoryMessage),
+            messages: data
+              .slice()
+              .reverse()
+              .map(mapHistoryMessage)
+              .filter(Boolean),
           })
         );
       }
@@ -279,7 +339,11 @@ export default function useChatLogic({
         dispatch(
           setHistory({
             chatKey: `group:${data.name}`,
-            messages: data.chatData.slice().reverse().map(mapHistoryMessage),
+            messages: data.chatData
+              .slice()
+              .reverse()
+              .map(mapHistoryMessage)
+              .filter(Boolean),
           })
         );
       }
@@ -295,39 +359,10 @@ export default function useChatLogic({
       chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
     };
   }, [currentUser, dispatch]);
-  const startReply = (msg) => {
-    setReplyMsg(msg);
-  };
-  const attachReplyMeta = (mes) => {
-    if (!replyMsg) return mes;
 
-    const replyMeta = {
-      reply: {
-        msgId: replyMsg.id,
-        from: replyMsg.from,
-        type: replyMsg.type,
-        preview: getMessagePreview(replyMsg),
-      },
-    };
+  // ---------- REPLY META ----------
+  const startReply = (msg) => setReplyMsg(msg);
 
-    if (typeof mes === "string" && !mes.startsWith("{")) {
-      return JSON.stringify({
-        customType: "text",
-        text: mes,
-        meta: replyMeta,
-      });
-    }
-
-    try {
-      const parsed = JSON.parse(mes);
-      return JSON.stringify({
-        ...parsed,
-        meta: replyMeta,
-      });
-    } catch {
-      return mes;
-    }
-  };
   const buildReplyMeta = () => {
     if (!replyMsg) return null;
     return {
@@ -340,12 +375,33 @@ export default function useChatLogic({
     };
   };
 
+  const attachReplyMeta = (mes) => {
+    if (!replyMsg) return mes;
+
+    const replyMeta = buildReplyMeta();
+
+    if (typeof mes === "string" && !mes.startsWith("{")) {
+      return JSON.stringify({
+        customType: "text",
+        text: mes,
+        meta: replyMeta,
+      });
+    }
+
+    try {
+      const parsed = JSON.parse(mes);
+      return JSON.stringify({ ...parsed, meta: replyMeta });
+    } catch {
+      return mes;
+    }
+  };
+
+  // ---------- SEND: FILE UPLOAD ----------
   const handleFileUpload = async (file) => {
     if (!activeChat || !file) return;
     const captionText = input.trim();
 
     setIsUploading(true);
-
     try {
       const url = await uploadFileToS3(file);
       if (!url) return;
@@ -395,75 +451,80 @@ export default function useChatLogic({
             url,
             fileName: file.name,
             optimistic: true,
-            meta: buildReplyMeta?.() || null,
+            meta: buildReplyMeta() || null,
           },
         })
       );
+
       dispatch(
         setListUser({
           name: activeChat.name,
-          lastMessage: captionText,
+          lastMessage: captionText || `[${String(type).toUpperCase()}]`,
           actionTime: now,
           type: activeChat.type,
         })
       );
+
       setReplyMsg(null);
     } finally {
       setIsUploading(false);
     }
   };
-    const handleSendRichText = (editorRef) => {
-        const richJson = extractRichText(editorRef);
-        console.log(richJson)
-        if (!richJson) return;
-        if (!activeChat) return;
 
-        const now = Date.now();
+  // ---------- SEND: RICH TEXT ----------
+  const handleSendRichText = (editorRef) => {
+    const richJson = extractRichText?.(editorRef);
+    if (!richJson || !activeChat) return;
 
-        let payload = JSON.stringify({
-            customType: "richText",
-            text: richJson.text,
-            blocks: richJson.blocks,
-        });
+    const now = Date.now();
 
-        payload = attachReplyMeta(payload);
-        console.log(payload)
-        chatSocketServer.send(
-            "SEND_CHAT",
-            makeOutgoingPayload({
-                type: activeChat.type,
-                to: activeChat.name,
-                mes: payload,
-            })
-        );
-        dispatch(
-            addMessage({
-                chatKey,
-                message: {
-                    id: `local-${now}`,
-                    text: "",
-                    blocks: richJson.blocks,
-                    sender: "user",
-                    actionTime: now,
-                    time: formatVNDateTime(now),
-                    type: "richText",
-                    from: currentUser,
-                    to: activeChat.name,
-                    optimistic: true,
-                    meta: buildReplyMeta?.() || null,
-                },
-            })
-        );
-        dispatch(
-            setListUser({
-                name: activeChat.name,
-                lastMessage: richJson.text,
-                actionTime: now,
-                type: activeChat.type,
-            })
-        );
-    };
+    let payload = JSON.stringify({
+      customType: "richText",
+      text: richJson.text,
+      blocks: richJson.blocks,
+    });
 
+    payload = attachReplyMeta(payload);
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: payload,
+      })
+    );
+
+    dispatch(
+      addMessage({
+        chatKey,
+        message: {
+          id: `local-${now}`,
+          text: "",
+          blocks: richJson.blocks,
+          sender: "user",
+          actionTime: now,
+          time: formatVNDateTime(now),
+          type: "richText",
+          from: currentUser,
+          to: activeChat.name,
+          optimistic: true,
+          meta: buildReplyMeta() || null,
+        },
+      })
+    );
+
+    dispatch(
+      setListUser({
+        name: activeChat.name,
+        lastMessage: richJson.text || "[RICH]",
+        actionTime: now,
+        type: activeChat.type,
+      })
+    );
+  };
+
+  // ---------- SEND: TEXT / EMOJI ----------
   const handleSend = () => {
     if (!activeChat) return;
 
@@ -496,7 +557,7 @@ export default function useChatLogic({
           from: currentUser,
           to: activeChat.name,
           optimistic: true,
-          meta: buildReplyMeta?.() || null,
+          meta: buildReplyMeta() || null,
         },
       })
     );
@@ -514,11 +575,11 @@ export default function useChatLogic({
     setInput("");
   };
 
+  // ---------- SEND: VOICE ----------
   const handleSendVoice = async (audioBlob) => {
     if (!activeChat || !audioBlob) return;
 
     setIsUploading(true);
-
     try {
       const fileName = `voice-${Date.now()}.webm`;
       const audioFile = new File([audioBlob], fileName, {
@@ -560,7 +621,7 @@ export default function useChatLogic({
             url,
             fileName,
             optimistic: true,
-            meta: buildReplyMeta?.() || null,
+            meta: buildReplyMeta() || null,
           },
         })
       );
@@ -580,6 +641,7 @@ export default function useChatLogic({
     }
   };
 
+  // ---------- SEND: STICKER ----------
   const handleSendSticker = (sticker) => {
     if (!activeChat || !sticker?.url) return;
 
@@ -614,7 +676,7 @@ export default function useChatLogic({
           to: activeChat.name,
           url: sticker.url,
           optimistic: true,
-          meta: buildReplyMeta?.() || null,
+          meta: buildReplyMeta() || null,
         },
       })
     );
@@ -622,6 +684,7 @@ export default function useChatLogic({
     setReplyMsg(null);
   };
 
+  // ---------- SEND: GIF ----------
   const handleSendGif = (gif) => {
     if (!activeChat || !gif?.url) return;
 
@@ -656,21 +719,24 @@ export default function useChatLogic({
           to: activeChat.name,
           url: gif.url,
           optimistic: true,
-          meta: buildReplyMeta?.() || null,
+          meta: buildReplyMeta() || null,
         },
       })
     );
-      dispatch(
-          setListUser({
-              name: activeChat.name,
-              lastMessage: "[GIF]",
-              actionTime: now,
-              type: activeChat.type,
-          })
-      );
+
+    dispatch(
+      setListUser({
+        name: activeChat.name,
+        lastMessage: "[GIF]",
+        actionTime: now,
+        type: activeChat.type,
+      })
+    );
+
     setReplyMsg(null);
   };
 
+  // ---------- LOAD HISTORY ----------
   const loadHistory = (page = 1, chat = activeChat) => {
     if (!chat) return;
     chatSocketServer.send(
@@ -741,15 +807,18 @@ export default function useChatLogic({
       handleSendVoice,
       handleSendSticker,
       handleSendGif,
+      handleSendRichText,
+
       handleChatSelect,
       loadHistory,
+
       startReply,
       startForward,
       closeForward,
       handleConfirmForward,
+
       handleSendPoll,
       handleSendPollVote,
-        handleSendRichText,
     },
   };
 }

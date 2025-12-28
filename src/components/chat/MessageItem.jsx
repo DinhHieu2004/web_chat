@@ -1,6 +1,41 @@
 import React from "react";
 import { FaUserCircle, FaFileAlt, FaReply, FaShare } from "react-icons/fa";
 
+const decodeEmojiFromCpsJson = (raw) => {
+  if (typeof raw !== "string") return "";
+  const s = raw.trim();
+  if (!s.startsWith("{")) return "";
+  try {
+    const obj = JSON.parse(s);
+    if (obj?.customType === "emoji" && Array.isArray(obj?.cps)) {
+      return obj.cps
+        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
+        .join("");
+    }
+  } catch (_) {}
+  return "";
+};
+
+const cpsToEmoji = (cps) => {
+  if (!Array.isArray(cps)) return "";
+  try {
+    return cps.map((hex) => String.fromCodePoint(parseInt(hex, 16))).join("");
+  } catch (_) {
+    return "";
+  }
+};
+
+const emojiToCps = (text) => {
+  if (typeof text !== "string" || !text.trim()) return null;
+  try {
+    return Array.from(text).map((ch) =>
+      ch.codePointAt(0).toString(16).toUpperCase()
+    );
+  } catch (_) {
+    return null;
+  }
+};
+
 export default function MessageItem({
   msg,
   onReply,
@@ -28,25 +63,49 @@ export default function MessageItem({
 
   const buildPreviewForForward = (m) => {
     if (m?.type === "forward" && m?.meta?.forward?.preview) {
-      return m.meta.forward.preview;
+      const pv = m.meta.forward.preview;
+      if (
+        pv?.type === "richText" &&
+        (!Array.isArray(pv?.blocks) || pv.blocks.length === 0) &&
+        Array.isArray(m?.blocks)
+      ) {
+        return { ...pv, blocks: m.blocks };
+      }
+      return pv;
+    }
+
+    const t = typeof m?.text === "string" ? m.text : m?.text?.text ?? "";
+    let cps = null;
+
+    if (m?.type === "emoji") {
+      cps = Array.isArray(m?.cps) ? m.cps : null;
+
+      if (!cps && typeof t === "string" && t.trim().startsWith("{")) {
+        const decoded = decodeEmojiFromCpsJson(t);
+        cps = emojiToCps(decoded);
+      }
+
+      if (!cps) cps = emojiToCps(t);
     }
 
     return {
       type: m?.type || "text",
-      text: typeof m?.text === "string" ? m.text : m?.text?.text ?? "",
+      text: t,
+      cps, // ✅ emoji cps
       url: m?.url || null,
       fileName: m?.fileName || null,
+      blocks: Array.isArray(m?.blocks) ? m.blocks : [], 
       rawMes: typeof m?.rawMes === "string" ? m.rawMes : null,
     };
   };
 
-  const renderRichText = () => {
-    const blocks = Array.isArray(msg?.blocks) ? msg.blocks : [];
-    if (blocks.length === 0) return null;
+  const renderRichTextFromBlocks = (blocks) => {
+    const arr = Array.isArray(blocks) ? blocks : [];
+    if (arr.length === 0) return null;
 
     return (
       <div className="flex flex-col gap-1">
-        {blocks.map((block, i) => (
+        {arr.map((block, i) => (
           <div key={i} style={{ whiteSpace: "pre-wrap" }}>
             {Array.isArray(block?.spans) && block.spans.length > 0 ? (
               block.spans.map((span, j) => {
@@ -63,6 +122,7 @@ export default function MessageItem({
                   color: span.color || "inherit",
                   fontSize: span.fontSize || "inherit",
                 };
+
                 return (
                   <span key={j} style={style}>
                     {span.text}
@@ -78,6 +138,12 @@ export default function MessageItem({
     );
   };
 
+  const renderRichText = () => {
+    const blocks = Array.isArray(msg?.blocks) ? msg.blocks : [];
+    if (blocks.length === 0) return null;
+    return renderRichTextFromBlocks(blocks);
+  };
+
   const renderContent = () => {
     if (finalType === "forward") {
       const fwd = msg?.meta?.forward;
@@ -90,6 +156,22 @@ export default function MessageItem({
         typeof pv?.text === "string" ? pv.text : pv?.text?.text ?? "";
       const pvFileName = pv?.fileName || null;
 
+      let pvTextSafe = pvText;
+
+      if (pvType === "emoji") {
+        const decodedFromCps = cpsToEmoji(pv?.cps);
+        const decodedFromJson = decodeEmojiFromCpsJson(pvText);
+        pvTextSafe = decodedFromCps || decodedFromJson || pvTextSafe;
+      }
+      const pvBlocks =
+        pvType === "richText"
+          ? Array.isArray(pv?.blocks) && pv.blocks.length > 0
+            ? pv.blocks
+            : Array.isArray(msg?.blocks)
+            ? msg.blocks
+            : []
+          : [];
+
       return (
         <div className="flex flex-col gap-2">
           {note.trim() && (
@@ -97,7 +179,13 @@ export default function MessageItem({
           )}
 
           {pvType === "emoji" && (
-            <div className="text-base leading-none">{String(pvText || "")}</div>
+            <div className="text-base leading-none">
+              {String(pvTextSafe || "")}
+            </div>
+          )}
+
+          {pvType === "richText" && pvBlocks.length > 0 && (
+            <div>{renderRichTextFromBlocks(pvBlocks)}</div>
           )}
 
           {pvType === "sticker" && pvUrl && (
@@ -149,9 +237,12 @@ export default function MessageItem({
             </a>
           )}
 
-          {pvType !== "emoji" && pvType !== "richText" && pvText.trim() && (
-            <p className="text-sm break-words whitespace-pre-wrap">{pvText}</p>
-          )}
+          {pvType !== "emoji" &&
+            pvType !== "richText" &&
+            typeof pvText === "string" &&
+            pvText.trim() && (
+              <p className="text-sm break-words whitespace-pre-wrap">{pvText}</p>
+            )}
         </div>
       );
     }
@@ -194,11 +285,16 @@ export default function MessageItem({
         </div>
       );
     }
+    let displayEmojiText = finalText;
+    if (finalType === "emoji") {
+      const decoded = decodeEmojiFromCpsJson(finalText);
+      if (decoded) displayEmojiText = decoded;
+    }
 
     return (
       <div className="flex flex-col gap-2">
         {finalType === "emoji" && (
-          <div className="text-base leading-none">{finalText}</div>
+          <div className="text-base leading-none">{displayEmojiText}</div>
         )}
 
         {finalType === "sticker" && finalUrl && (
@@ -259,9 +355,7 @@ export default function MessageItem({
         {finalType !== "emoji" &&
           finalType !== "richText" &&
           safeText.trim() && (
-            <p className="text-sm break-words whitespace-pre-wrap">
-              {safeText}
-            </p>
+            <p className="text-sm break-words whitespace-pre-wrap">{safeText}</p>
           )}
       </div>
     );
@@ -294,6 +388,12 @@ export default function MessageItem({
           {replyMeta &&
             (() => {
               const preview = normalizeReplyPreview(replyMeta);
+              let replyPreviewText = preview?.text || "";
+              if (preview?.type === "emoji") {
+                const fromCps = cpsToEmoji(preview?.cps);
+                const fromJson = decodeEmojiFromCpsJson(replyPreviewText);
+                replyPreviewText = fromCps || fromJson || replyPreviewText;
+              }
 
               return (
                 <div
@@ -304,8 +404,7 @@ export default function MessageItem({
                   }`}
                 >
                   <div className="font-semibold truncate">
-                    Trả lời{" "}
-                    {replyMeta.from === msg.from ? "Bạn" : replyMeta.from}
+                    Trả lời {replyMeta.from === msg.from ? "Bạn" : replyMeta.from}
                   </div>
 
                   {preview?.url && (
@@ -337,8 +436,8 @@ export default function MessageItem({
                     </>
                   )}
 
-                  {!preview?.url && preview?.text && (
-                    <div className="opacity-80 truncate">{preview.text}</div>
+                  {!preview?.url && replyPreviewText && (
+                    <div className="opacity-80 truncate">{replyPreviewText}</div>
                   )}
                 </div>
               );

@@ -18,8 +18,16 @@ export default function ChatArea({
   isGroupChat,
   toggleSearchPanel,
   messageRefs,
+  typing,
   ...rest
 }) {
+  const typingUsers =
+    typing && typeof typing === "object"
+      ? Object.entries(typing)
+          .filter(([_, isTyping]) => !!isTyping)
+          .map(([user]) => user)
+      : [];
+
   return (
     <div className="flex-1 min-h-0 flex flex-col">
       <ChatHeader activeChat={activeChat} onOpenSearch={toggleSearchPanel} />
@@ -42,6 +50,17 @@ export default function ChatArea({
             toggleGroupMenu();
           }}
         />
+      )}
+
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-1 flex items-center gap-2 text-xs text-blue-500 italic font-medium bg-white/50 animate-fade-in">
+          <div className="flex gap-1">
+            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
+            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+          </div>
+          <span>{typingUsers.join(", ")} đang nhập...</span>
+        </div>
       )}
 
       <ChatInput

@@ -86,6 +86,19 @@ export const parseCustomMessage = (mes) => {
   try {
     const parsed = JSON.parse(mes);
 
+    if (parsed?.customType === "emoji" && Array.isArray(parsed?.cps)) {
+      const emojiText = cpsToEmoji(parsed.cps);
+
+      return {
+        type: "emoji",
+        text: emojiText,
+        url: null,
+        fileName: null,
+        rawMes: mes,
+        meta: parsed?.meta || null,
+      };
+    }
+
     if (parsed?.customType === "poll" && parsed?.payload) {
       return {
         type: "poll",
@@ -104,29 +117,38 @@ export const parseCustomMessage = (mes) => {
       };
     }
 
-    if (parsed?.customType === "emoji" && Array.isArray(parsed.cps)) {
-      const text = parsed.cps
-        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
-        .join("");
-
-      return {
-        type: "emoji",
-        text,
-        url: null,
-        fileName: null,
-        meta: parsed.meta || null,
-        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
-      };
-    }
-
     if (parsed?.customType === "forward") {
+      const fwd = parsed?.meta?.forward || {};
+      const pv = fwd?.preview || {};
+
+      let displayText =
+        typeof parsed.text === "string" && parsed.text.trim() ? parsed.text : "";
+
+      if (!displayText) {
+        if (pv?.type === "emoji") {
+          const emojiFromCps = cpsToEmoji(pv?.cps);
+          displayText =
+            emojiFromCps || decodeEmojiFromCpsJson(pv?.text) || "[Emoji]";
+        } else if (typeof pv?.text === "string" && pv.text) {
+          displayText = pv.text;
+        } else if (
+          typeof fwd?.previewLabel === "string" &&
+          fwd.previewLabel.trim()
+        ) {
+          displayText = fwd.previewLabel;
+        } else {
+          displayText = "[Forward]";
+        }
+      }
+
       return {
         type: "forward",
-        text: typeof parsed.text === "string" ? parsed.text : "",
-        url: parsed.url || null,
-        fileName: parsed.fileName || null,
-        meta: parsed.meta || null,
-        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
+        text: displayText,
+        url: parsed?.url || null,
+        fileName: parsed?.fileName || null,
+        meta: parsed?.meta || null,
+        rawMes: typeof mes === "string" ? mes : "",
+        blocks: Array.isArray(parsed?.blocks) ? parsed.blocks : [],
       };
     }
   } catch (e) {
@@ -153,9 +175,7 @@ export const tryParseCustomPayload = (text) => {
     }
 
     if (ct === "emoji" && Array.isArray(parsed?.cps)) {
-      const emojiText = parsed.cps
-        .map((hex) => String.fromCodePoint(parseInt(hex, 16)))
-        .join("");
+      const emojiText = cpsToEmoji(parsed.cps);
 
       return {
         type: "emoji",
@@ -169,13 +189,38 @@ export const tryParseCustomPayload = (text) => {
     }
 
     if (ct === "forward") {
+      const meta = parsed.meta || null;
+      const fwd = meta?.forward || {};
+      const pv = fwd?.preview || {};
+
+      let displayText =
+        typeof parsed.text === "string" && parsed.text.trim() ? parsed.text : "";
+
+      if (!displayText) {
+        if (pv?.type === "emoji") {
+          const emojiFromCps = cpsToEmoji(pv?.cps);
+          displayText =
+            emojiFromCps || decodeEmojiFromCpsJson(pv?.text) || "[Emoji]";
+        } else if (typeof pv?.text === "string" && pv.text.trim()) {
+          displayText = pv.text;
+        } else if (
+          typeof fwd?.previewLabel === "string" &&
+          fwd.previewLabel.trim()
+        ) {
+          displayText = fwd.previewLabel;
+        } else {
+          displayText = "[Forward]";
+        }
+      }
+
       return {
         type: "forward",
         url: parsed.url || null,
-        text: typeof parsed.text === "string" ? parsed.text : "",
+        text: displayText,
         fileName: parsed.fileName || null,
-        meta: parsed.meta || null,
+        meta,
         blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
+        rawMes: text,
       };
     }
 
@@ -237,6 +282,8 @@ export const getMessagePreview = (msg) => {
     text: msg.text,
     url: msg.url,
     fileName: msg.fileName,
+    cps: msg.cps, 
+    blocks: Array.isArray(msg?.blocks) ? msg.blocks : [], 
   };
 };
 
@@ -262,6 +309,8 @@ export const getPurePreview = (msg, messageMap) => {
       text: origin.text,
       url: origin.url,
       fileName: origin.fileName,
+      cps: origin.cps,
+      blocks: Array.isArray(origin?.blocks) ? origin.blocks : [],
     };
   }
 
@@ -294,6 +343,8 @@ export const previewToText = (msg) => {
       return "[Tệp đính kèm]";
     case "emoji":
       return "[Emoji]";
+    case "richText":
+      return "[Văn bản]";
     default:
       return "[Tin nhắn]";
   }
@@ -302,12 +353,15 @@ export const previewToText = (msg) => {
 const safeStr = (v) => (typeof v === "string" ? v : "");
 const safeObj = (v) => (v && typeof v === "object" ? v : null);
 
+
 const makePreviewText = (origin) => {
-  if (typeof origin?.rawMes === "string" && origin.rawMes) return origin.rawMes;
-
   const t = safeStr(origin?.text) || safeStr(origin?.text?.text);
-  if (origin?.type === "emoji" && t) return buildEmojiMessage(t);
 
+  if (origin?.type === "emoji") {
+    return t; 
+  }
+
+  if (typeof origin?.rawMes === "string" && origin.rawMes) return origin.rawMes;
   return t;
 };
 
@@ -320,22 +374,63 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
     originMsgObj?.type === "forward" && previewFromForward
       ? previewFromForward
       : originMsgObj;
+
   let p = null;
-  let previewLabel = "";
   try {
     p = getMessagePreview(origin);
   } catch (_) {}
-  try {
-    previewLabel = previewToText(origin);
-  } catch (_) {}
 
   const rawText = makePreviewText(origin);
+  const previewType = p?.type || origin?.type || "text";
+
+  const richBlocks =
+    previewType === "richText" && Array.isArray(origin?.blocks)
+      ? origin.blocks
+      : previewType === "richText" && Array.isArray(p?.blocks)
+      ? p.blocks
+      : [];
+
+  let previewText = "";
+  let previewCps = null;
+
+  if (previewType === "emoji") {
+    if (typeof rawText === "string" && rawText.trim().startsWith("{")) {
+      try {
+        const obj = JSON.parse(rawText);
+        if (obj?.customType === "emoji" && Array.isArray(obj?.cps)) {
+          previewCps = obj.cps;
+        }
+      } catch (_) {}
+    }
+
+    if (!previewCps && typeof rawText === "string" && rawText.trim()) {
+      previewCps = Array.from(rawText).map((ch) =>
+        ch.codePointAt(0).toString(16).toUpperCase()
+      );
+    }
+
+    if (!previewCps) {
+      const t = previewToText(origin); 
+      if (typeof t === "string" && t && t !== "[Emoji]") {
+        previewCps = Array.from(t).map((ch) =>
+          ch.codePointAt(0).toString(16).toUpperCase()
+        );
+      }
+    }
+
+    previewText = "[Emoji]";
+  } else if (previewType === "richText") {
+    previewText = "[Văn bản]";
+  } else {
+    previewText = typeof rawText === "string" ? rawText : "";
+  }
 
   return JSON.stringify({
     customType: "forward",
-    text: String(note || previewLabel || ""),
+    text: String(note || ""),
     url: p?.url || null,
     fileName: p?.fileName || null,
+    blocks: richBlocks.length ? richBlocks : [],
     meta: {
       forward: {
         fromChat: safeStr(originChatObj?.name),
@@ -343,14 +438,13 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
         originalFrom: safeStr(originMsgObj?.from),
         originalType: safeStr(origin?.type) || "text",
         preview: {
-          type: p?.type || origin?.type || "text",
-          text: safeStr(origin?.text) || safeStr(origin?.text?.text) || "", 
-          rawMes: rawText, 
+          type: previewType,
+          text: previewText,
+          cps: previewCps,
           url: p?.url || null,
           fileName: p?.fileName || null,
+          blocks: richBlocks.length ? richBlocks : [],
         },
-        previewLabel: String(previewLabel || ""),
-        note: String(note || ""),
       },
     },
   });
@@ -427,4 +521,24 @@ export const extractRichText = (
   const finalBlocks = blocks.filter((b) => b && b.spans.length > 0);
 
   return { blocks: finalBlocks, text: plainText };
+};
+
+const decodeEmojiFromCpsJson = (raw) => {
+  if (typeof raw !== "string") return "";
+  const s = raw.trim();
+  if (!s.startsWith("{")) return "";
+
+  try {
+    const obj = JSON.parse(s);
+    if (obj?.customType === "emoji" && Array.isArray(obj?.cps)) {
+      return cpsToEmoji(obj.cps);
+    }
+  } catch (_) {}
+
+  return "";
+};
+
+const cpsToEmoji = (cps) => {
+  if (!Array.isArray(cps)) return "";
+  return cps.map((hex) => String.fromCodePoint(parseInt(hex, 16))).join("");
 };
