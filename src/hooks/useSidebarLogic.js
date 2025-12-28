@@ -74,7 +74,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
             }
         };
 
-        chatSocketServer.on("CHECK_USER_ONLINE", onCheckOnline);
+       // chatSocketServer.on("CHECK_USER_ONLINE", onCheckOnline);
 
         return () => {
             chatSocketServer.off("CHECK_USER_ONLINE", onCheckOnline);
