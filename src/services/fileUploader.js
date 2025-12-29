@@ -14,7 +14,16 @@ const BUCKET = import.meta.env.VITE_S3_BUCKET;
 export const uploadFileToS3 = async (file) => {
     if (!file) return null;
 
-    const safeName = encodeURIComponent(file.name);
+    const getSafeName = (name) => {
+        let raw = name || "file";
+        try {
+            raw = decodeURIComponent(raw);
+        } catch (_) {}
+        raw = raw.replace(/\s+/g, "-").replace(/%/g, "");
+        return encodeURIComponent(raw);
+    };
+
+    const safeName = getSafeName(file.name);
     const key = `uploads/${Date.now()}-${safeName}`;
 
     try {
@@ -36,4 +45,3 @@ export const uploadFileToS3 = async (file) => {
         return null;
     }
 };
-
