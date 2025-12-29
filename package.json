@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.952.0",
+    "@daily-co/daily-js": "^0.85.0",
     "@reduxjs/toolkit": "^2.11.1",
     "emoji-picker-react": "^4.16.1",
     "lucide-react": "^0.556.0",
