@@ -1,11 +1,16 @@
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { setActiveChat } from "../../redux/slices/listUserSlice";
+
 import ChatSearchPanel from "./ChatSearchPanel";
+import ForwardMessageModal from "./ForwardMessageModal";
 
 import Sidebar from "../sidebar/Sidebar";
 import ChatArea from "./ChatArea";
 import useChatLogic from "../../hooks/useChatLogic";
+import CallButtons from './CallButtons';
+import IncomingCallModal from './IncomingCallModal';
+import VideoCallScreen from './VideoCallScreen';
 
 export default function ChatContainer() {
     const dispatch = useDispatch();
@@ -22,6 +27,7 @@ export default function ChatContainer() {
     });
 
     const isGroupChat = activeChat?.type === "room";
+
     return (
         <div className="flex h-screen bg-gray-100 p-2 overflow-hidden">
             <Sidebar
@@ -36,23 +42,36 @@ export default function ChatContainer() {
                         onClick={() => dispatch(logout())}
                         className="px-4 py-2 bg-red-500 text-white rounded"
                     >
-                        Logout
+                        Đăng xuất
                     </button>
                 </div>
 
+                {/* Call error banner */}
+                {chat.callLogic.callError && (
+                    <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow z-50">
+                        <strong>Call error:</strong> {chat.callLogic.callError}
+                    </div>
+                )}
+
                 <div className="flex flex-1 min-h-0 overflow-hidden">
                     <ChatArea
+                        handlers={{
+                            ...chat.handlers,
+                            onVoiceCall: chat.callLogic.startVoiceCall,
+                            onVideoCall: chat.callLogic.startVideoCall,
+                        }}
                         activeChat={activeChat}
                         messages={chat.messages}
                         input={chat.input}
                         setInput={chat.setInput}
-                        handlers={chat.handlers}
+                        // handlers={chat.handlers}
                         messagesEndRef={chat.messagesEndRef}
                         replyMsg={chat.replyMsg}
                         clearReply={chat.clearReply}
                         getMessagePreview={chat.getMessagePreview}
                         showSearchPanel={chat.showSearchPanel}
-                        toggleSearchPanel={chat.toggleSearchPanel}
+                        toggleSearchPanel={chat.handlers.toggleSearchPanel}
+                        closeSearchPanel={chat.handlers.closeSearchPanel}
                         messageSearchQuery={chat.messageSearchQuery}
                         setMessageSearchQuery={chat.setMessageSearchQuery}
                         matchIds={chat.matchIds}
@@ -61,13 +80,29 @@ export default function ChatContainer() {
                         gotoPrevMatch={chat.gotoPrevMatch}
                         messageRefs={chat.messageRefs}
                         isGroupChat={isGroupChat}
+
+                        toggleGroupMenu={chat.handlers.toggleGroupMenu}
+                        toggleEmojiPicker={chat.handlers.toggleEmojiPicker}
+                        showEmojiPicker={chat.showEmojiPicker}
+                        showGroupMenu={chat.showGroupMenu}
+
                         typing={chat.typing}
+
+
+
+                    />
+                    <ForwardMessageModal
+                        open={chat.showForwardModal}
+                        onClose={chat.handlers.closeForward}
+                        onSend={chat.handlers.handleConfirmForward}
+                        contacts={chat.contacts}
+                        messagePreview={chat.forwardPreview}
                     />
 
                     <ChatSearchPanel
                         open={chat.showSearchPanel}
                         onClose={() => {
-                            chat.closeSearchPanel();
+                            chat.handlers.closeSearchPanel();
                             chat.setMessageSearchQuery("");
                             chat.setSenderFilter("ALL");
                             chat.setDateFilter("ALL");
@@ -86,6 +121,27 @@ export default function ChatContainer() {
                         senderOptions={chat.senderOptions}
                     />
                 </div>
+
+                {chat.callLogic.incomingCall && (
+                    <IncomingCallModal
+                        from={chat.callLogic.incomingCall.from}
+                        callType={chat.callLogic.incomingCall.callType}
+                        isGroup={chat.callLogic.incomingCall.isGroup}
+                        groupName={chat.callLogic.incomingCall.groupName}
+                        onAccept={chat.callLogic.acceptCall}
+                        onReject={chat.callLogic.rejectCall}
+                    />
+                )}
+
+                {chat.callLogic.showCallScreen && (
+                    <VideoCallScreen
+                        roomUrl={chat.callLogic.currentRoomUrl}
+                        callType={chat.callLogic.currentCallType}
+                        onLeave={chat.callLogic.endCall}
+                        peerRinging={chat.callLogic.peerRinging}
+                    />
+                )}
+
             </div>
         </div>
     );

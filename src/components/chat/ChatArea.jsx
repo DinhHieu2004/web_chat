@@ -21,20 +21,31 @@ export default function ChatArea({
     typing,
     ...rest
 }) {
+    const typingUsers =
+        typing && typeof typing === "object"
+            ? Object.entries(typing)
+                .filter(([_, isTyping]) => !!isTyping)
+                .map(([user]) => user)
+            : [];
+
     return (
         <div className="flex-1 min-h-0 flex flex-col">
-            <ChatHeader activeChat={activeChat} onOpenSearch={toggleSearchPanel} />
+            <ChatHeader
+                activeChat={activeChat}
+                onOpenSearch={toggleSearchPanel}
 
+                onVoiceCall={handlers.onVoiceCall}
+                onVideoCall={handlers.onVideoCall}
+            />
             <MessageList
                 messages={messages}
                 messagesEndRef={messagesEndRef}
                 activeChat={activeChat}
-                onVote={handlers?.handleSendPollVote}
                 messageRefs={messageRefs}
                 onReply={handlers.startReply}
+                onForward={handlers.startForward}
+                onVote={handlers?.handleSendPollVote}
             />
-
-            {/* POLL CREATOR */}
             {showGroupMenu && isGroupChat && (
                 <PollCreator
                     onClose={toggleGroupMenu}
@@ -44,24 +55,16 @@ export default function ChatArea({
                     }}
                 />
             )}
-            {
-                typing && Object.keys(typing).length > 0 && (
-                    <div className="px-4 py-1 flex items-center gap-2 text-xs text-blue-500 italic font-medium bg-white/50 animate-fade-in">
-                        <div className="flex gap-1">
-                            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></span>
-                            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                        </div>
-                        <span>
-                            {Object.entries(typing)
-                                .filter(([_, isTyping]) => isTyping)
-                                .map(([user]) => user)
-                                .join(', ')} đang nhập...
-                        </span>
+            {typingUsers.length > 0 && (
+                <div className="px-4 py-1 flex items-center gap-2 text-xs text-blue-500 italic font-medium bg-white/50 animate-fade-in">
+                    <div className="flex gap-1">
+                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" />
+                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                        <span className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
                     </div>
-                )
-            }
-
+                    <span>{typingUsers.join(", ")} đang nhập...</span>
+                </div>
+            )}
             <ChatInput
                 input={input}
                 setInput={setInput}
