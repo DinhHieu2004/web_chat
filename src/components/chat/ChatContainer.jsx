@@ -15,10 +15,17 @@ import VideoCallScreen from './VideoCallScreen';
 export default function ChatContainer() {
     const dispatch = useDispatch();
 
-    const { list, activeChatId } = useSelector((state) => state.listUser);
+    // const { list, activeChatId } = useSelector((state) => state.listUser);
+    // const user = useSelector((state) => state.auth.user);
+
+    const list = useSelector((state) => state.listUser.list);
+    const activeChatId = useSelector((state) => state.listUser.activeChatId);
     const user = useSelector((state) => state.auth.user);
 
-    const activeChat = list.find((c) => c.name === activeChatId) || null;
+    // const activeChat = list.find((c) => c.name === activeChatId) || null;
+    const activeChat = useMemo(() => {
+        return list.find((c) => c.name === activeChatId) || null;
+    }, [list, activeChatId]);
 
     const chat = useChatLogic({
         activeChat,
@@ -87,6 +94,7 @@ export default function ChatContainer() {
                         showGroupMenu={chat.showGroupMenu}
 
                         typing={chat.typing}
+                        callLogic={chat.callLogic}
 
 
 

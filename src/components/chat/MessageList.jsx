@@ -9,6 +9,8 @@ export default function MessageList({
     onReply,
     onForward,
     onVote,
+    callLogic,
+    
 }) {
     const isRoom = activeChat?.type === "room";
 
@@ -29,6 +31,7 @@ export default function MessageList({
                         onReply={onReply}
                         onForward={onForward}
                         onVote={onVote}
+                        onRecall={(type) => type === 'video' ? callLogic.startVideoCall() : callLogic.startVoiceCall()}
                     />
                 </div>
             ))}

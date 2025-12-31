@@ -23,22 +23,26 @@ export function useChatSocket(currentUser, callLogic) {
             const rawText = typeof mes === "string" ? mes : mes?.mes || mes?.text || "";
             const parsed = tryParseCustomPayload(rawText);
 
-            if (parsed?.customType === "call_request" && from !== currentUser) {
-                callLogic.handleIncomingCall({ ...parsed, from });
+            const isCallLog = parsed?.customType === "call_log" || parsed?.type === "call_log";
+
+            if (parsed?.customType === "call_request") {
+                if (from !== currentUser) {
+                    callLogic.handleIncomingCall({ ...parsed, from });
+                }
                 return;
             }
-            if (parsed?.customType === "call_accepted") {
-                callLogic.notifyPeerRinging(false);
-                return;
-            }
-            if (parsed?.customType === "call_rejected") {
-                callLogic.endCall();
+            if (parsed?.customType === "call_accepted" || parsed?.customType === "call_rejected") {
+                if (parsed?.customType === "call_accepted") {
+                    callLogic.notifyPeerRinging(false);
+                }
                 return;
             }
             if (parsed?.customType === "call_signal") {
                 if (parsed.action === "accepted") callLogic.notifyPeerRinging(false);
                 return;
             }
+
+
 
             const chatKey = makeChatKeyFromWs({
                 type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
@@ -51,22 +55,27 @@ export function useChatSocket(currentUser, callLogic) {
 
             const now = Date.now();
 
+
             dispatch(
                 addMessage({
                     chatKey,
                     message: {
                         id: now + Math.random(),
-                        text: parsed ? parsed.text : rawText,
+                        text: isCallLog ? (parsed.text || "Cuộc gọi") : (parsed?.text || rawText || "[Tin nhắn]"), rawMes: rawText,
+                        mes: rawText, 
                         sender: String(from).toLowerCase() === String(currentUser).toLowerCase() ? "user" : "other",
                         actionTime: now,
                         time: formatVNDateTime(now),
-                        type: parsed?.type || "text",
+                        type: isCallLog ? "call_log" : (parsed?.type || "text"),
                         from,
                         to,
                         url: parsed?.url || null,
                         fileName: parsed?.fileName || null,
                         meta: parsed?.meta || null,
                         blocks: parsed?.blocks || [],
+                        callType: parsed?.callType || null,
+                        duration: parsed?.duration || null,
+                        wasMissed: parsed?.wasMissed || false,
                     },
                 })
             );
@@ -87,15 +96,25 @@ export function useChatSocket(currentUser, callLogic) {
 
             const mapHistoryMessage = (m) => {
                 const parsed = tryParseCustomPayload(m?.mes);
+
+                if (parsed?.customType === "call_request" ||
+                    parsed?.customType === "call_accepted" ||
+                    parsed?.customType === "call_rejected" ||
+                    parsed?.customType === "call_signal") {
+                    return null;
+                }
+
                 const ts = m?.createAt ? Date.parse(m.createAt) : 0;
                 const actionTime = Number.isNaN(ts) ? 0 : ts;
+
+                const isCallLog = parsed?.customType === "call_log" || parsed?.type === "call_log";
                 return {
                     id: m?.id ?? (actionTime || Date.now() + Math.random()),
-                    text: parsed ? parsed.text : m?.mes || "",
+                    text: isCallLog ? (parsed?.text || "Cuộc gọi") : (parsed?.text || m?.mes || ""),
                     sender: String(m?.name).toLowerCase() === String(currentUser).toLowerCase() ? "user" : "other",
                     actionTime,
                     time: formatVNDateTime(m?.createAt || actionTime || Date.now()),
-                    type: parsed?.type || m?.messageType || "text",
+                    type: isCallLog ? "call_log" : (parsed?.type || m?.messageType || "text"),
                     from: m?.name,
                     to: m?.to,
                     url: parsed?.url || m?.url || null,
