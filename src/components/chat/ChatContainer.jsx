@@ -12,7 +12,7 @@ import CallButtons from './CallButtons';
 import IncomingCallModal from './IncomingCallModal';
 import VideoCallScreen from './VideoCallScreen';
 
-export default function ChatContainer() {
+export default function ChatContainer({ toggleTheme }) {
     const dispatch = useDispatch();
 
     // const { list, activeChatId } = useSelector((state) => state.listUser);
@@ -38,6 +38,7 @@ export default function ChatContainer() {
     return (
         <div className="flex h-screen bg-gray-100 p-2 overflow-hidden">
             <Sidebar
+                toggleTheme={toggleTheme}
                 searchTerm={chat.searchTerm}
                 setSearchTerm={chat.setSearchTerm}
                 onSelectContact={chat.handlers.handleChatSelect}

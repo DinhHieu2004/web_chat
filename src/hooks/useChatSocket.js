@@ -110,7 +110,7 @@ export function useChatSocket(currentUser, callLogic) {
                 const isCallLog = parsed?.customType === "call_log" || parsed?.type === "call_log";
                 return {
                     id: m?.id ?? (actionTime || Date.now() + Math.random()),
-                    text: isCallLog ? (parsed?.text || "Cuộc gọi") : (parsed?.text || m?.mes || ""),
+                    text: isCallLog ? (parsed ? parsed.text : m?.mes || "") : (parsed ? parsed.text : m?.mes || ""),
                     sender: String(m?.name).toLowerCase() === String(currentUser).toLowerCase() ? "user" : "other",
                     actionTime,
                     time: formatVNDateTime(m?.createAt || actionTime || Date.now()),
