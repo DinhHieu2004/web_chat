@@ -19,6 +19,7 @@ export default function ChatArea({
     toggleSearchPanel,
     messageRefs,
     typing,
+    callLogic,
     ...rest
 }) {
     const typingUsers =
@@ -45,6 +46,7 @@ export default function ChatArea({
                 onReply={handlers.startReply}
                 onForward={handlers.startForward}
                 onVote={handlers?.handleSendPollVote}
+                callLogic={handlers.callLogic}
             />
             {showGroupMenu && isGroupChat && (
                 <PollCreator

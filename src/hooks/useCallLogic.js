@@ -1,15 +1,51 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { chatSocketServer } from '../services/socket';
 import { dailyService } from '../services/dailyService';
-import { makeOutgoingPayload } from '../utils/chatDataFormatter';
+import { makeOutgoingPayload, formatVNDateTime } from '../utils/chatDataFormatter';
+import { addMessage } from "../redux/slices/chatSlice";
+import { setListUser } from "../redux/slices/listUserSlice";
 
-export function useCallLogic({ activeChat, currentUser }) {
+export function useCallLogic({ activeChat, currentUser, dispatch }) {
+    const callStartTimeRef = useRef(null);
+    const lastCallTargetRef = useRef(null);
+    const callLogSentRef = useRef(false);
+
+    const [isConnected, setIsConnected] = useState(false);
     const [showCallScreen, setShowCallScreen] = useState(false);
+    const [isCallInitiator, setIsCallInitiator] = useState(false);
     const [currentRoomUrl, setCurrentRoomUrl] = useState(null);
     const [currentCallType, setCurrentCallType] = useState(null);
     const [incomingCall, setIncomingCall] = useState(null);
     const [callError, setCallError] = useState(null);
     const [peerRinging, setPeerRinging] = useState(false);
+
+    const resetAllCallStates = useCallback(() => {
+        setCurrentRoomUrl(null);
+        setCurrentCallType(null);
+        callStartTimeRef.current = null;
+        lastCallTargetRef.current = null;
+        setIsCallInitiator(false);
+        setPeerRinging(false);
+        setIsConnected(false);
+        callLogSentRef.current = false;
+    }, []);
+
+    const calculateDuration = useCallback(() => {
+        if (!callStartTimeRef.current || !isConnected) return null;
+
+        const diff = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
+        if (diff <= 0) return "0 giây";
+
+        const mins = Math.floor(diff / 60);
+        const secs = diff % 60;
+
+        return mins > 0 ? `${mins} phút ${secs} giây` : `${secs} giây`;
+    }, [isConnected]);
+
+    const markCallStarted = useCallback(() => {
+        callStartTimeRef.current = Date.now();
+        setIsConnected(true);
+    }, []);
 
     const startCall = useCallback(async (callType) => {
         if (!activeChat) return;
@@ -37,6 +73,7 @@ export function useCallLogic({ activeChat, currentUser }) {
         }
 
         setCallError(null);
+        lastCallTargetRef.current = activeChat;
 
         chatSocketServer.send('SEND_CHAT',
             makeOutgoingPayload({
@@ -56,12 +93,15 @@ export function useCallLogic({ activeChat, currentUser }) {
         setCurrentRoomUrl(roomUrl);
         setCurrentCallType(callType);
         setShowCallScreen(true);
+        setIsCallInitiator(true);
+        callLogSentRef.current = false;
     }, [activeChat, currentUser]);
 
     const startVoiceCall = useCallback(() => startCall('voice'), [startCall]);
     const startVideoCall = useCallback(() => startCall('video'), [startCall]);
 
     const handleIncomingCall = useCallback((callData) => {
+        setIsCallInitiator(false);
         setIncomingCall({
             from: callData.from,
             callType: callData.callType,
@@ -73,7 +113,6 @@ export function useCallLogic({ activeChat, currentUser }) {
 
     const acceptCall = useCallback(() => {
         if (!incomingCall) return;
-
         const chatType = incomingCall.isGroup ? 'room' : 'people';
 
         chatSocketServer.send('SEND_CHAT',
@@ -87,22 +126,6 @@ export function useCallLogic({ activeChat, currentUser }) {
             })
         );
 
-        try {
-            chatSocketServer.send('SEND_CHAT',
-                makeOutgoingPayload({
-                    type: chatType, 
-                    to: incomingCall.from,
-                    mes: JSON.stringify({
-                        customType: 'call_signal',
-                        action: 'accepted',
-                        roomUrl: incomingCall.roomUrl,
-                        from: currentUser,
-                    }),
-                })
-            );
-        } catch (e) { }
-
-        // Chuẩn hóa URL
         const normalizedRoomUrl = (typeof incomingCall.roomUrl === 'string')
             ? incomingCall.roomUrl
             : (incomingCall.roomUrl?.url || incomingCall.roomUrl?.meeting_url || null);
@@ -120,12 +143,11 @@ export function useCallLogic({ activeChat, currentUser }) {
 
     const rejectCall = useCallback(() => {
         if (!incomingCall) return;
-
         const chatType = incomingCall.isGroup ? 'room' : 'people';
 
         chatSocketServer.send('SEND_CHAT',
             makeOutgoingPayload({
-                type: chatType, 
+                type: chatType,
                 to: incomingCall.from,
                 mes: JSON.stringify({
                     customType: 'call_rejected',
@@ -133,33 +155,73 @@ export function useCallLogic({ activeChat, currentUser }) {
                 })
             })
         );
-
-        try {
-            chatSocketServer.send('SEND_CHAT',
-                makeOutgoingPayload({
-                    type: chatType,
-                    to: incomingCall.from,
-                    mes: JSON.stringify({
-                        customType: 'call_signal',
-                        action: 'rejected',
-                        from: currentUser,
-                    }),
-                })
-            );
-        } catch (e) { }
-
         setIncomingCall(null);
     }, [incomingCall, currentUser]);
 
     const endCall = useCallback(() => {
+        const durationText = calculateDuration();
+        const savedCallType = currentCallType;
+        const targetChat = activeChat || lastCallTargetRef.current;
+        const wasConnected = isConnected;
+
         setShowCallScreen(false);
-        setCurrentRoomUrl(null);
-        setCurrentCallType(null);
-    }, []);
+
+        if (isCallInitiator && !callLogSentRef.current && targetChat && savedCallType) {
+            callLogSentRef.current = true;
+
+            const isSuccess = wasConnected && durationText;
+            // const finalStatusText = isSuccess
+            //     ? (savedCallType === 'video' ? 'Cuộc gọi video' : 'Cuộc gọi thoại')
+            //     : (savedCallType === 'video' ? 'Cuộc gọi video nhỡ' : 'Cuộc gọi thoại nhỡ');
+            console.log("durationText:", durationText);
+
+            const finalStatusText = "Cuộc gọi thoại"
+            const now = Date.now();
+            const callLogPayload = JSON.stringify({
+                customType: 'call_log',
+                callType: savedCallType,
+                duration: durationText || "",
+                text: finalStatusText,
+                wasMissed: !isSuccess,
+                from: currentUser?.name || currentUser,
+                sentAt: new Date().toISOString()
+            });
+
+            chatSocketServer.send("SEND_CHAT", makeOutgoingPayload({
+                type: targetChat.type,
+                to: targetChat.name,
+                mes: callLogPayload,
+            }));
+
+            const chatKey = targetChat.type === 'room' ? `group:${targetChat.name}` : `user:${targetChat.name}`;
+            dispatch(addMessage({
+                chatKey,
+                message: {
+                    id: `local-call-${now}`,
+                    text: finalStatusText,
+                    type: "call_log",
+                    actionTime: now,
+                    time: formatVNDateTime(now),
+                    from: currentUser?.name || currentUser,
+                    sender: "user",
+                    duration: durationText || ""
+                },
+            }));
+
+            dispatch(setListUser({
+                name: targetChat.name,
+                lastMessage: finalStatusText,
+                actionTime: now,
+                type: targetChat.type,
+            }));
+        }
+
+        resetAllCallStates();
+    }, [activeChat, currentCallType, isConnected, calculateDuration, currentUser, dispatch, isCallInitiator, resetAllCallStates]);
 
     return {
         showCallScreen, currentRoomUrl, currentCallType, incomingCall,
-        callError, peerRinging, startVoiceCall, startVideoCall,
+        callError, peerRinging, startVoiceCall, startVideoCall, markCallStarted,
         acceptCall, rejectCall, endCall, handleIncomingCall,
         notifyPeerRinging: (isRinging = true) => setPeerRinging(!!isRinging)
     };

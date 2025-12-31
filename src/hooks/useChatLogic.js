@@ -17,7 +17,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
     const messagesEndRef = useRef(null);
 
     const ui = useChatState();
-    const callLogic = useCallLogic({ activeChat, currentUser });
+    const callLogic = useCallLogic({ activeChat, currentUser, dispatch });
     const search = useChatSearch(messages, chatKey);
     const poll = usePollActions({ activeChat, chatKey, currentUser });
 

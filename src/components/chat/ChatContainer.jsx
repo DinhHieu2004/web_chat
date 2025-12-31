@@ -94,6 +94,7 @@ export default function ChatContainer() {
                         showGroupMenu={chat.showGroupMenu}
 
                         typing={chat.typing}
+                        callLogic={chat.callLogic}
 
 
 

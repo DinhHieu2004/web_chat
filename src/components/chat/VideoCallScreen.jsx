@@ -1,118 +1,88 @@
 import { useEffect, useRef, useState } from 'react';
 import DailyIframe from '@daily-co/daily-js';
-import { FaRegWindowClose } from "react-icons/fa";
 
-export default function VideoCallScreen({ roomUrl, callType, onLeave, peerRinging = false, currentUser }) {
-    const containerRef = useRef(null); 
-    const callFrameRef = useRef(null);
-    const isInitializing = useRef(false);
+let globalCallFrame = null;
 
-    const [isConnecting, setIsConnecting] = useState(true);
-    const [callError, setCallError] = useState(null);
+export default function VideoCallScreen({ roomUrl, currentUser, onLeave }) {
+	const containerRef = useRef(null);
+	const [isConnecting, setIsConnecting] = useState(true);
 
-    useEffect(() => {
-        if (!containerRef.current || !roomUrl || isInitializing.current) return;
+	useEffect(() => {
+		if (!containerRef.current || !roomUrl) return;
 
-        const startCall = async () => {
-            isInitializing.current = true;
-            try {
-                if (window.activeDailyCall) {
-                    await window.activeDailyCall.destroy();
-                    window.activeDailyCall = null;
-                }
+		const initCall = async () => {
+			if (globalCallFrame) {
+				await globalCallFrame.destroy();
+				globalCallFrame = null;
+			}
 
-                const frame = DailyIframe.createFrame(containerRef.current, {
-                    showLeaveButton: false,
-                    allowMultipleCallInstances: true, 
-                    iframeStyle: {
-                        position: 'absolute',
-                        width: '100%',
-                        height: '100%',
-                        border: '0',
-                        zIndex: '1',
-                    },
-                });
+			try {
+				const frame = DailyIframe.createFrame(containerRef.current, {
+					showLeaveButton: true,
+					allowMultipleCallInstances: true,
+					iframeStyle: {
+						position: 'absolute',
+						width: '100%',
+						height: '100%',
+						border: '0',
+					},
+				});
 
-                callFrameRef.current = frame;
-                window.activeDailyCall = frame;
+				globalCallFrame = frame;
 
-                frame.on('joined-meeting', () => setIsConnecting(false));
-                frame.on('left-meeting', () => {
-                    onLeave?.();
-                });
+				frame.on('joined-meeting', () => setIsConnecting(false));
+				frame.on('left-meeting', async () => {
+					console.log("Người dùng đã gác máy");
 
-                frame.on('error', (e) => {
-                    if (e.errorMsg?.includes('postMessage')) return;
-                    setCallError(e.errorMsg || "Lỗi kết nối cuộc gọi");
-                    setIsConnecting(false);
-                });
+					onLeave?.();
 
-                await frame.join({
-                    url: roomUrl,
-                    userName: currentUser?.name || currentUser || "Người dùng",
-                    startVideoOff: callType === 'voice',
-                });
+					if (globalCallFrame) {
+						try {
+							await globalCallFrame.leave();
+							await globalCallFrame.destroy();
+						} catch (e) {
+							console.log("Error destroying frame", e);
+						}
+						globalCallFrame = null;
+					}
+				});
 
-            } catch (err) {
-                if (!err.message?.includes('postMessage')) {
-                    console.error("Daily Join Error:", err);
-                    setCallError(err.message);
-                }
-            } finally {
-                isInitializing.current = false;
-            }
-        };
+				setTimeout(() => {
+					if (isConnecting) setIsConnecting(false);
+				}, 10000);
 
-        startCall();
+				await frame.join({
+					url: roomUrl,
+					userName: currentUser?.name || "Người dùng",
+					prejoinPageEnabled: false,
+				});
 
-        return () => {
-            isInitializing.current = false;
-            if (callFrameRef.current) {
-                const frame = callFrameRef.current;
-                callFrameRef.current = null;
-                window.activeDailyCall = null;
-                
-                frame.destroy().catch(() => {});
-            }
-        };
-    }, [roomUrl]); 
+			} catch (err) {
+				console.error("Daily Init Error:", err);
+				setIsConnecting(false);
+			}
+		};
 
-    const handleLeave = async () => {
-        if (callFrameRef.current) {
-            try {
-                await callFrameRef.current.leave();
-            } catch (e) {}
-        }
-        onLeave?.();
-    };
+		initCall();
 
-    return (
-        <div className="fixed inset-0 bg-black  wrap-z-[9999] flex items-center justify-center overflow-hidden">
-            <div ref={containerRef} className="w-full h-full absolute inset-0" style={{ zIndex: 1 }} />
+		return () => {
+			if (globalCallFrame) {
+				globalCallFrame.destroy();
+				globalCallFrame = null;
+			}
+		};
+	}, [roomUrl]);
 
-            {isConnecting && !callError && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white wrap-z-[10]">
-                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <p className="text-lg animate-pulse">
-                        {peerRinging ? 'Đang gọi đối phương...' : 'Đang thiết lập kết nối...'}
-                    </p>
-                </div>
-            )}
+	return (
+		<div className="fixed inset-0 bg-black z-9999 flex items-center justify-center overflow-hidden">
+			<div ref={containerRef} className="w-full h-full" />
 
-            {callError && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/80 wrap-z-[20] p-4">
-                    <div className="bg-white p-6 rounded-2xl max-w-sm w-full text-center">
-                        <p className="text-red-600 font-bold mb-4">{callError}</p>
-                        <button onClick={onLeave} className="bg-red-600 text-white px-6 py-2 rounded-lg">Quay lại</button>
-                    </div>
-                </div>
-            )}
-
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 wrap-z-[30]">
-                <button onClick={handleLeave} className="bg-red-600 p-5 rounded-full text-white shadow-xl hover:bg-red-700 active:scale-95 transition-all">
-                    <FaRegWindowClose size={28} />
-                </button>
-            </div>
-        </div>
-    );
+			{isConnecting && (
+				<div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white z-50">
+					<div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+					<p className="text-lg animate-pulse">Đang kết nối Camera/Micro...</p>
+				</div>
+			)}
+		</div>
+	);
 }

@@ -1,5 +1,6 @@
 import React from "react";
 import { FaUserCircle, FaFileAlt, FaReply, FaShare } from "react-icons/fa";
+import { FaVideo, FaPhone, FaPhoneSlash } from "react-icons/fa";
 
 const decodeEmojiFromCpsJson = (raw) => {
     if (typeof raw !== "string") return "";
@@ -42,10 +43,31 @@ export default function MessageItem({
     onForward,
     isRoom,
     onVote,
+    onRecall,
 }) {
+
+    if (msg.type === 'call_request' || 
+        msg.type === 'call_accepted' || 
+        msg.type === 'call_rejected' || 
+        msg.type === 'call_signal') {
+        return null;
+    }
+    
     const isMe = msg.sender === "user";
     const finalType = msg.type || "text";
     const finalUrl = msg.url || null;
+
+    const rawMes = typeof msg.text === "string" ? msg.text : (msg.rawMes || "");
+   
+   
+    let callData = null;
+    if (finalType === "call_log" && rawMes.startsWith("{")) {
+        try {
+            callData = JSON.parse(rawMes);
+        } catch (e) {
+            console.error("Parse call log error:", e);
+        }
+    }
 
     const finalText =
         typeof msg.text === "string" ? msg.text : msg.text?.text || "";
@@ -91,7 +113,7 @@ export default function MessageItem({
         return {
             type: m?.type || "text",
             text: t,
-            cps, // ✅ emoji cps
+            cps, 
             url: m?.url || null,
             fileName: m?.fileName || null,
             blocks: Array.isArray(m?.blocks) ? m.blocks : [],
@@ -291,6 +313,46 @@ export default function MessageItem({
             if (decoded) displayEmojiText = decoded;
         }
 
+        if (finalType === "call_log") {
+            const isVideo = callData?.callType === "video";
+            const isMissed = callData?.wasMissed;
+
+            return (
+                <div className="min-w-[220px] py-1">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className={`p-2.5 rounded-full ${
+                            isMe 
+                            ? 'bg-white/20 text-white' 
+                            : isMissed ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-600'
+                        }`}>
+                            {isMissed ? <FaPhoneSlash size={18} /> : (isVideo ? <FaVideo size={18} /> : <FaPhone size={18} />)}
+                        </div>
+                        
+                        <div className="flex-1">
+                            <div className={`font-bold text-sm ${!isMe && isMissed ? 'text-red-500' : ''}`}>
+                                {callData?.text || (isVideo ? "Cuộc gọi video" : "Cuộc gọi thoại")}
+                            </div>
+                            <div className={`text-[11px] ${isMe ? 'text-purple-100' : 'text-gray-500'}`}>
+                                {isMissed ? "Nhấn để gọi lại" : (callData?.duration || "Đã kết thúc")}
+                            </div>
+                        </div>
+                    </div>
+
+                    <button 
+                        onClick={() => onRecall?.(callData?.callType)}
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                            isMe 
+                            ? 'bg-white/20 hover:bg-white/30 text-white' 
+                            : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                        }`}
+                    >
+                        {isVideo ? <FaVideo size={12} /> : <FaPhone size={12} />}
+                        Gọi lại
+                    </button>
+                </div>
+            );
+        }
+
         return (
             <div className="flex flex-col gap-2">
                 {finalType === "emoji" && (
@@ -358,6 +420,8 @@ export default function MessageItem({
                 {finalType !== "emoji" &&
                     finalType !== "richText" &&
                     finalType !== "poll" &&
+                    finalType !== "sticker" &&
+                    finalType !== "gif" &&
                     safeText && safeText.trim() !== "" && (
                         <p className={`text-sm wrap-break-words whitespace-pre-wrap ${finalUrl ? "mt-2" : ""}`}>
                             {safeText}
