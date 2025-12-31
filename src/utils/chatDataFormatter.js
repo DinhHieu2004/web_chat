@@ -166,6 +166,21 @@ export const tryParseCustomPayload = (text) => {
     const parsed = JSON.parse(text);
     const ct = parsed?.customType;
 
+    // Special-case call request payloads so we preserve call-specific fields
+    if (ct === "call_request") {
+      return {
+        customType: "call_request",
+        callType: parsed.callType || parsed.type || null,
+        roomUrl: parsed.roomUrl || parsed.url || null,
+        isGroup: typeof parsed.isGroup === 'boolean' ? parsed.isGroup : !!parsed.isGroup,
+        groupName: parsed.groupName || null,
+        text: typeof parsed.text === "string" ? parsed.text : "",
+        meta: parsed.meta || null,
+        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
+        rawMes: text,
+      };
+    }
+
     if (ct === "poll" && parsed?.payload) {
       return {
         customType: "poll",
@@ -226,6 +241,7 @@ export const tryParseCustomPayload = (text) => {
 
     if (ct) {
       return {
+        customType: ct,
         type: ct,
         url: parsed.url || null,
         text: typeof parsed.text === "string" ? parsed.text : "",
