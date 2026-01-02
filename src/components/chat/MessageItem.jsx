@@ -450,7 +450,7 @@ export default function MessageItem({
                 <div
                     className={`px-4 py-2 rounded-lg message-bubble ${isMe
                         ? "bg-linear-to-r from-purple-500 to-blue-500 text-white"
-                        : "bg-gray-100 text-gray-900"
+                        : "bg-white text-gray-900"
                         }`}
                 >
                     {replyMeta &&

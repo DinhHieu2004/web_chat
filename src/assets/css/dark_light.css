@@ -26,7 +26,7 @@
 
 [data-theme="dark"] {
     --bg-white: #111827;
-    --bg-gray-100: #1f2937;
+    --bg-gray-100: #1c2430;
     --bg-gray-200: rgba(20, 23, 30, 0.83);
 
     --border-gray-200: #374151;
@@ -35,8 +35,8 @@
     --text-gray-700: #d1d5db;
 
     --bg-surface: var(--bg-gray-100);
-    --hover-muted: #1f2937;
-    --active-bg: #1f2937;
+    --hover-muted: #1c212b;
+    --active-bg: #1c212b;
     --active-border: #8b5cf6;
     --text-primary: var(--text-gray-800);
     --text-secondary: #d1d5db;
@@ -121,16 +121,16 @@
     outline-color: var(--active-border);
 }
 /* phần mess item background*/
-[data-theme="dark"] .message-bubble.bg-gray-100 {
+[data-theme="dark"] .message-bubble.bg-white {
     background-color: var(--bg-gray-200) !important;
 }
-[data-theme="dark"] .message-bubble.bg-gray-100,
-[data-theme="dark"] .message-bubble.bg-gray-100 .text-gray-900,
-[data-theme="dark"] .message-bubble.bg-gray-100 p,
-[data-theme="dark"] .message-bubble.bg-gray-100 span:not([style]) {
+[data-theme="dark"] .message-bubble.bg-white,
+[data-theme="dark"] .message-bubble.bg-white .text-gray-900,
+[data-theme="dark"] .message-bubble.bg-white p,
+[data-theme="dark"] .message-bubble.bg-white span:not([style]) {
     color: white !important;
 }
-[data-theme="dark"] .message-bubble.bg-gray-100 .bg-gray-200 {
+[data-theme="dark"] .message-bubble.bg-white .bg-gray-200 {
     background-color: rgba(55, 65, 81, 0.7) !important;
     border-color: rgba(139, 92, 246, 0.5) !important;
 }
