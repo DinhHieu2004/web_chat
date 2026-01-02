@@ -14,6 +14,7 @@ import {
     FaTimes,
     FaFileAlt,
     FaMicrophone,
+    FaLocationArrow
 } from "react-icons/fa";
 
 import { LuSticker } from "react-icons/lu";
@@ -28,12 +29,16 @@ export default function ChatInput({
     replyMsg,
     getMessagePreview,
     isGroupChat,
+    location,
 }) {
+
+    const [showLocaltionCF, setShowLocaltionCF] = useState(false);
     const [record, setRecord] = useState(false);
     const [showPollCreator, setShowPollCreator] = useState(false);
 
 
-    const { handleSend, handleSendRichText, handleFileUpload, handleSendPoll, clearReply } = handlers;
+    const { handleSend, handleSendRichText, handleFileUpload, handleSendPoll, handleSendLocation, clearReply } = handlers;
+
 
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -42,6 +47,8 @@ export default function ChatInput({
     const [activeTab, setActiveTab] = useState("STICKER");
     const pickerPanelRef = useRef(null);
     const pickerBtnRef = useRef(null);
+    const locationConfirmRef = useRef(null);
+
     const preview = getMessagePreview(replyMsg);
     const isImageLike = ["image", "gif", "sticker"].includes(preview?.type);
     const isFile = preview?.type === "file";
@@ -84,7 +91,7 @@ export default function ChatInput({
     };
 
     useEffect(() => {
-        if (!showPicker) return;
+        if (!showPicker || !showLocaltionCF) return;
 
         const handleClickOutside = (e) => {
             if (
@@ -94,11 +101,15 @@ export default function ChatInput({
                 return;
             }
             setShowPicker(false);
+
+            if (showLocaltionCF && !locationConfirmRef.current?.contains(e.target)) {
+                setShowLocaltionCF(false);
+            }
         };
 
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [showPicker]);
+    }, [showPicker, showLocaltionCF]);
 
     // ===== Upload inputs =====
     const fileInputRef = useRef(null);
@@ -144,6 +155,12 @@ export default function ChatInput({
         }
         setShowPollCreator(false);
     };
+    const confirmAndSendLocation = async () => {
+        setShowLocaltionCF(false);
+        if (handleSendLocation) {
+            await handleSendLocation();
+        }
+    }
 
     return (
         <div className="bg-white border-t border-gray-200 relative">
@@ -279,6 +296,41 @@ export default function ChatInput({
                                 <FaChartBar size={18} />
                             </button>
                         )}
+                        <div className="relative flex items-center">
+                            {showLocaltionCF && (
+                                <div className="absolute bottom-full mb-3 left-0 z-9999 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2">
+                                    <p className="text-sm text-gray-700 mb-3 font-medium leading-snug">
+                                        Xác nhận gửi vị trí của bạn?
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={confirmAndSendLocation}
+                                            className="flex-1 bg-linear-to-r from-purple-500 to-blue-500 text-white text-xs font-bold py-2 rounded-lg hover:opacity-90 transition-opacity"
+                                        >
+                                            Gửi
+                                        </button>
+                                        <button
+                                            onClick={() => setShowLocationConfirm(false)}
+                                            className="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                                        >
+                                            Hủy
+                                        </button>
+                                    </div>
+                                    <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-r border-b border-gray-200 rotate-45"></div>
+                                </div>
+                            )}
+
+                            <button
+                                onClick={() => setShowLocaltionCF(!showLocaltionCF)}
+                                className={`p-2 rounded-full transition-all ${showLocaltionCF ? "bg-purple-100 text-purple-600 shadow-inner" : "hover:bg-gray-100 text-gray-600"
+                                    }`}
+                                title="Chia sẻ vị trí"
+                                disabled={isUploading}
+                                type="button"
+                            >
+                                <FaLocationArrow size={18} />
+                            </button>
+                        </div>
 
                         <button
                             onClick={handleFileClick}
@@ -488,7 +540,7 @@ export default function ChatInput({
                                         key={item.font}
                                         type="button"
                                         style={{ fontFamily: item.font }}
-                                        className={`px-2 py-1 border rounded hover:bg-gray-100 flex-shrink-0
+                                        className={`px-2 py-1 border rounded hover:bg-gray-100 shrink-0
             ${format.fontName === item.font ? "bg-purple-100 text-purple-600 border-purple-500" : "text-gray-600 border-gray-300"}`}
                                         onClick={() => {
                                             if (editorRef.current) {

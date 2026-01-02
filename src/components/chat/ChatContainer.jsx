@@ -96,6 +96,7 @@ export default function ChatContainer({ toggleTheme }) {
 
                         typing={chat.typing}
                         callLogic={chat.callLogic}
+                        location = {chat.location}
 
 
 
