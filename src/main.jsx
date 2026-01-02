@@ -9,7 +9,7 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-        <Provider store={store}> {/* <--- Bọc App bằng Provider */}
+        <Provider store={store}>
             <App />
         </Provider>
     </React.StrictMode>

@@ -1,0 +1,251 @@
+:root {
+    /* background */
+    --bg-white: #ffffff;
+    --bg-gray-100: #f3f4f6;
+    --bg-gray-200: #e5e7eb;
+
+    /* border */
+    --border-gray-200: #e5e7eb;
+
+    /* text */
+    --text-gray-800: #1f2937;
+    --text-gray-700: #374151;
+
+    /* ContactItem */
+    --bg-surface: var(--bg-white);
+    --hover-muted: #e5e7eb;
+    --active-bg: #f0efff;
+    --active-border: #8b5cf6;
+    --text-primary: var(--text-gray-800);
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --text-gray-500: #6b7280;
+
+
+}
+
+[data-theme="dark"] {
+    --bg-white: #111827;
+    --bg-gray-100: #1c2430;
+    --bg-gray-200: rgba(20, 23, 30, 0.83);
+
+    --border-gray-200: #374151;
+
+    --text-gray-800: #f9fafb;
+    --text-gray-700: #d1d5db;
+
+    --bg-surface: var(--bg-gray-100);
+    --hover-muted: #1c212b;
+    --active-bg: #1c212b;
+    --active-border: #8b5cf6;
+    --text-primary: var(--text-gray-800);
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --text-gray-500: var(--text-gray-800);
+
+}
+/* ===== Thumb ===== */
+.theme-thumb {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9999px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    transition: transform .3s ease;
+    z-index: 10;
+}
+.theme-thumb svg {
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.theme-toggle {
+    background-color: #e5e7eb;
+}
+
+.icon-sun {
+    color: #f59e0b;
+}
+
+.icon-moon {
+    display: none;
+}
+
+[data-theme="dark"] .theme-toggle {
+    background-color: #374151;
+}
+
+[data-theme="dark"] .theme-thumb {
+    transform: translateX(32px);
+    background-color: #111827;
+}
+
+[data-theme="dark"] .icon-sun {
+    display: none;
+}
+
+[data-theme="dark"] .icon-moon {
+    display: block;
+    color: #a5b4fc;
+}
+
+
+/* phần chatinput*/
+[data-theme="dark"] .chat-input-wrapper,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] [contenteditable] {
+    background-color: var(--bg-gray-100);   /* nền input */
+    color: var(--text-gray-800);            /* text */
+    border-color: var(--border-gray-200);   /* border */
+}
+
+/* placeholder */
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder,
+[data-theme="dark"] [contenteditable]::placeholder {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] [contenteditable]:focus {
+    outline-color: var(--active-border);
+}
+/* phần mess item background*/
+[data-theme="dark"] .message-bubble.bg-white {
+    background-color: var(--bg-gray-200) !important;
+}
+[data-theme="dark"] .message-bubble.bg-white,
+[data-theme="dark"] .message-bubble.bg-white .text-gray-900,
+[data-theme="dark"] .message-bubble.bg-white p,
+[data-theme="dark"] .message-bubble.bg-white span:not([style]) {
+    color: white !important;
+}
+[data-theme="dark"] .message-bubble.bg-white .bg-gray-200 {
+    background-color: rgba(55, 65, 81, 0.7) !important;
+    border-color: rgba(139, 92, 246, 0.5) !important;
+}
+[data-theme="dark"] ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 5px;
+}
+
+/* Buttons trong ở chỗ input và richtext */
+[data-theme="dark"] .chat-input-wrapper button {
+    background-color: var(--bg-gray-100);
+    color: var(--text-gray-800);
+    border-color: var(--border-gray-200);
+}
+
+[data-theme="dark"] .chat-input-wrapper button:hover {
+    background-color: var(--hover-muted);
+}
+[data-theme="dark"] .text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-100:hover {
+    background-color: var(--hover-muted) !important;
+}
+
+[data-theme="dark"] .border {
+    border-color: var(--border-gray-200);
+}
+/* select size text*/
+[data-theme="dark"] .bg-white.border-t select.bg-white {
+    background-color: var(--bg-gray-100) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-gray-200) !important;
+}
+
+[data-theme="dark"] .bg-white.border-t select.hover\:bg-gray-50:hover {
+    background-color: var(--hover-muted) !important;
+}
+
+[data-theme="dark"] .bg-white.border-t select option {
+    background-color: var(--bg-gray-100);
+    color: var(--text-primary);
+}
+
+/* chung*/
+.message-time.text-gray-500 {
+    color: var(--text-gray-500);
+}
+.bg-white {
+    background-color: var(--bg-white);
+}
+
+.bg-gray-100 {
+    background-color: var(--bg-gray-100);
+}
+
+.hover\:bg-gray-200:hover {
+    background-color: var(--bg-gray-200);
+}
+
+.border-gray-200 {
+    border-color: var(--border-gray-200);
+}
+
+.text-gray-800 {
+    color: var(--text-gray-800);
+}
+
+.text-gray-700 {
+    color: var(--text-gray-700);
+}
+
+/* sidebar contact item*/
+.contact-item {
+    background-color: var(--bg-surface);
+    cursor: pointer;
+}
+
+.contact-item:hover {
+    background-color: var(--hover-muted) !important;
+}
+.hover\:bg-gray-50:hover {
+    background-color: var(--hover-muted) !important;
+}
+
+.contact-item-active {
+    background-color: var(--active-bg) ;
+    border-left: 4px solid var(--active-border);
+}
+
+.contact-item-name {
+    color: var(--text-primary);
+}
+
+.contact-item-msg {
+    color: var(--text-secondary);
+}
+
+.contact-item-time {
+    color: var(--text-muted);
+}
+.bg-purple-50 {
+    background-color: var(--active-bg) !important;
+}
+
+.border-purple-500 {
+    border-color: var(--active-border) !important;
+}
