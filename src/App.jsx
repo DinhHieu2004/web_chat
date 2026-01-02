@@ -1,14 +1,10 @@
-import { useState } from "react";
 import SocketProvider from "./providers/SocketProvider";
 import Auth from "./providers/Auth";
 import ChatContainer from "./components/chat/ChatContainer";
+import useTheme from "./hooks/useThemeDarkLight";
 
 export default function App() {
-    const [theme, setTheme] = useState("light");
-
-    const toggleTheme = () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
-    };
+    const { theme, toggleTheme } = useTheme();
 
     return (
         <div data-theme={theme}>

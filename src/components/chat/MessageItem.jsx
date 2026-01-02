@@ -435,20 +435,20 @@ export default function MessageItem({
         <div className={`flex mb-4 ${isMe ? "justify-end" : "justify-start"}`}>
             {!isMe && (
                 <div className="mr-3 mt-1">
-                    <FaUserCircle size={36} className="text-gray-400" />
+                    <FaUserCircle size={36} className="text-gray-400 avatar-icon" />
                 </div>
             )}
 
             <div className="max-w-[70%] relative group">
                 <div
-                    className={`text-xs text-gray-500 mb-1 ${isMe ? "text-right" : "text-left"
+                    className={`text-xs text-gray-500 mb-1 message-time ${isMe ? "text-right" : "text-left"
                         }`}
                 >
                     {isMe ? "Bạn" : msg.from} - {msg.time}
                 </div>
 
                 <div
-                    className={`px-4 py-2 rounded-lg ${isMe
+                    className={`px-4 py-2 rounded-lg message-bubble ${isMe
                         ? "bg-linear-to-r from-purple-500 to-blue-500 text-white"
                         : "bg-gray-100 text-gray-900"
                         }`}

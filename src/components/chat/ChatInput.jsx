@@ -26,7 +26,6 @@ export default function ChatInput({
     toggleGroupMenu,
     isUploading,
     replyMsg,
-    clearReply,
     getMessagePreview,
     isGroupChat,
 }) {
@@ -34,7 +33,7 @@ export default function ChatInput({
     const [showPollCreator, setShowPollCreator] = useState(false);
 
 
-    const { handleSend, handleSendRichText, handleFileUpload, handleSendPoll } = handlers;
+    const { handleSend, handleSendRichText, handleFileUpload, handleSendPoll, clearReply } = handlers;
 
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -254,7 +253,10 @@ export default function ChatInput({
                     </div>
 
                     <button
-                        onClick={clearReply}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handlers.clearReply();
+                        }}
                         className="ml-2 text-gray-400 hover:text-red-500"
                     >
                         ✕

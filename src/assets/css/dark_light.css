@@ -19,13 +19,15 @@
     --text-primary: var(--text-gray-800);
     --text-secondary: #6b7280;
     --text-muted: #9ca3af;
+    --text-gray-500: #6b7280;
+
 
 }
 
 [data-theme="dark"] {
     --bg-white: #111827;
     --bg-gray-100: #1f2937;
-    --bg-gray-200: #374151;
+    --bg-gray-200: rgba(20, 23, 30, 0.83);
 
     --border-gray-200: #374151;
 
@@ -39,6 +41,8 @@
     --text-primary: var(--text-gray-800);
     --text-secondary: #d1d5db;
     --text-muted: #9ca3af;
+    --text-gray-500: var(--text-gray-800);
+
 }
 /* ===== Thumb ===== */
 .theme-thumb {
@@ -116,6 +120,33 @@
 [data-theme="dark"] [contenteditable]:focus {
     outline-color: var(--active-border);
 }
+/* phần mess item background*/
+[data-theme="dark"] .message-bubble.bg-gray-100 {
+    background-color: var(--bg-gray-200) !important;
+}
+[data-theme="dark"] .message-bubble.bg-gray-100,
+[data-theme="dark"] .message-bubble.bg-gray-100 .text-gray-900,
+[data-theme="dark"] .message-bubble.bg-gray-100 p,
+[data-theme="dark"] .message-bubble.bg-gray-100 span:not([style]) {
+    color: white !important;
+}
+[data-theme="dark"] .message-bubble.bg-gray-100 .bg-gray-200 {
+    background-color: rgba(55, 65, 81, 0.7) !important;
+    border-color: rgba(139, 92, 246, 0.5) !important;
+}
+[data-theme="dark"] ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 5px;
+}
 
 /* Buttons trong ở chỗ input và richtext */
 [data-theme="dark"] .chat-input-wrapper button {
@@ -155,6 +186,9 @@
 }
 
 /* chung*/
+.message-time.text-gray-500 {
+    color: var(--text-gray-500);
+}
 .bg-white {
     background-color: var(--bg-white);
 }
