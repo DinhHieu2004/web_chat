@@ -20,6 +20,7 @@ export default function ChatArea({
     messageRefs,
     typing,
     callLogic,
+    location,
     ...rest
 }) {
     const typingUsers =
@@ -78,6 +79,7 @@ export default function ChatArea({
                 toggleEmojiPicker={toggleEmojiPicker}
                 isGroupChat={isGroupChat}
                 toggleGroupMenu={toggleGroupMenu}
+                location={location}
                 {...rest}
             />
         </div>

@@ -1,8 +1,10 @@
+import { useCallback } from "react";
 import { getLocation } from '../services/locationService';
 import { useDispatch } from "react-redux";
 import { addMessage } from "../redux/slices/chatSlice";
 import { formatVNDateTime, makeOutgoingPayload } from "../utils/chatDataFormatter";
 import { chatSocketServer } from '../services/socket';
+import { setListUser } from "../redux/slices/listUserSlice";
 
 export function useShareLocation({
     activeChat,
@@ -17,15 +19,18 @@ export function useShareLocation({
         try {
             const { lat, lng } = await getLocation();
 
+            const url = `https://www.google.com/maps?q=${lat},${lng}`;
+
             const now = Date.now();
+
+            const locationText = `Vị trí của: ${currentUser?.name || "người dùng"}`;
 
             const payload = JSON.stringify({
                 customType: "location",
-                lat,
+                lat, 
                 lng,
-                text: "Vi tri của: " + currentUser?.name,
-                from: currentUser?.name || currentUser,
-                sentAt: new Date(now).toISOString(),
+                url,
+                text: locationText,
             });
             chatSocketServer.send(
                 "SEND_CHAT",
@@ -45,15 +50,14 @@ export function useShareLocation({
                     message: {
                         id: `local-location-${now}`,
                         type: "location",
-                        text: "Vị trí của:" + currentUser?.name,
-                        lat,
-                        lng,
+                        mes: payload,
+                        text: locationText,
+                        url: url,
                         sender: "user",
                         from: currentUser?.name || currentUser,
                         to: activeChat.name,
                         actionTime: now,
                         time: formatVNDateTime(now),
-                        optimistic: true,
                     },
 
                 })
@@ -70,6 +74,6 @@ export function useShareLocation({
         } catch (err) {
             console.log("k gui dc", err);
         }
-    }, [activeChat, currentUser, dispatch]);
+    }, [activeChat, chatKey,currentUser, dispatch]);
     return { sendLocation };
 };

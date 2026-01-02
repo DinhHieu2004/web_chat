@@ -95,6 +95,7 @@ export default function ChatContainer() {
 
                         typing={chat.typing}
                         callLogic={chat.callLogic}
+                        location = {chat.location}
 
 
 

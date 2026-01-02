@@ -6,6 +6,7 @@ import { useChatActions } from "./useChatActions";
 import { useChatSocket } from "./useChatSocket";
 import { usePollActions } from "./handleSendPoll";
 import { useCallLogic } from './useCallLogic';
+import { useShareLocation } from "./useSendLocation";
 import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
 import { makeChatKeyFromActive, getPurePreview, getMessagePreview } from "../utils/chatDataFormatter";
 
@@ -20,6 +21,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
     const callLogic = useCallLogic({ activeChat, currentUser, dispatch });
     const search = useChatSearch(messages, chatKey);
     const poll = usePollActions({ activeChat, chatKey, currentUser });
+    const location = useShareLocation({activeChat, chatKey, currentUser,})
 
     const actions = useChatActions({
         ...ui, activeChat, chatKey, currentUser, dispatch
@@ -37,6 +39,7 @@ export default function useChatLogic({ activeChat, setActiveChat, currentUser })
         handlers: {
             ...actions,
             ...poll,
+            handleSendLocation: location.sendLocation, 
             handleChatSelect: (contact) => {
                 setActiveChat(contact);
                 loadHistory(1, contact);

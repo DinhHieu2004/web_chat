@@ -1,5 +1,5 @@
 import React from "react";
-import { FaUserCircle, FaFileAlt, FaReply, FaShare } from "react-icons/fa";
+import { FaUserCircle, FaFileAlt, FaReply, FaShare, FaMapMarkerAlt } from "react-icons/fa";
 import { FaVideo, FaPhone, FaPhoneSlash } from "react-icons/fa";
 
 const decodeEmojiFromCpsJson = (raw) => {
@@ -46,20 +46,22 @@ export default function MessageItem({
     onRecall,
 }) {
 
-    if (msg.type === 'call_request' || 
-        msg.type === 'call_accepted' || 
-        msg.type === 'call_rejected' || 
+    if (msg.type === 'call_request' ||
+        msg.type === 'call_accepted' ||
+        msg.type === 'call_rejected' ||
         msg.type === 'call_signal') {
         return null;
     }
-    
+
     const isMe = msg.sender === "user";
     const finalType = msg.type || "text";
     const finalUrl = msg.url || null;
 
-    const rawMes = typeof msg.text === "string" ? msg.text : (msg.rawMes || "");
-   
-   
+    const rawMes = typeof msg.mes === "string" ? msg.mes : (msg.rawMes || "");
+
+    console.log("mgs :", msg);
+    console.log("finalType :", finalType);
+
     let callData = null;
     if (finalType === "call_log" && rawMes.startsWith("{")) {
         try {
@@ -113,11 +115,13 @@ export default function MessageItem({
         return {
             type: m?.type || "text",
             text: t,
-            cps, 
+            cps,
             url: m?.url || null,
             fileName: m?.fileName || null,
             blocks: Array.isArray(m?.blocks) ? m.blocks : [],
             rawMes: typeof m?.rawMes === "string" ? m.rawMes : null,
+            lat: m?.lat || locationData?.lat,
+            lng: m?.lng || locationData?.lng,
         };
     };
 
@@ -308,6 +312,36 @@ export default function MessageItem({
             );
         }
         let displayEmojiText = finalText;
+
+        if (finalType === "location") {
+            const coords = msg.url?.match(/q=([\d.]+),([\d.]+)/) || msg.url?.match(/q=([\d.]+),([\d.]+)/);
+            let lat = coords ? coords[1] : msg.lat;
+            let lng = coords ? coords[2] : msg.lng;
+            if (!lat && msg.mes) {
+                try {
+                    const p = JSON.parse(msg.mes);
+                    lat = p.lat;
+                    lng = p.lng;
+                } catch (e) { }
+            }
+            if (lat && lng) {
+                return (
+                    <div className="location-box">
+                        <p className="m-0.5 text-sm font-medium wrap-break-words text-slate-700">
+                            {msg.text}</p>
+
+                        <div className="overflow-hidden rounded-xl border border-slate-200 aspect-square w-full">
+                            <iframe
+                                width="100%"
+                                height="100%"
+                                src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
+                                className="w-full h-full"
+                            ></iframe>
+                        </div>
+                    </div>
+                );
+            }
+        }
         if (finalType === "emoji") {
             const decoded = decodeEmojiFromCpsJson(finalText);
             if (decoded) displayEmojiText = decoded;
@@ -320,14 +354,13 @@ export default function MessageItem({
             return (
                 <div className="min-w-[220px] py-1">
                     <div className="flex items-center gap-3 mb-3">
-                        <div className={`p-2.5 rounded-full ${
-                            isMe 
-                            ? 'bg-white/20 text-white' 
+                        <div className={`p-2.5 rounded-full ${isMe
+                            ? 'bg-white/20 text-white'
                             : isMissed ? 'bg-red-100 text-red-500' : 'bg-gray-200 text-gray-600'
-                        }`}>
+                            }`}>
                             {isMissed ? <FaPhoneSlash size={18} /> : (isVideo ? <FaVideo size={18} /> : <FaPhone size={18} />)}
                         </div>
-                        
+
                         <div className="flex-1">
                             <div className={`font-bold text-sm ${!isMe && isMissed ? 'text-red-500' : ''}`}>
                                 {callData?.text || (isVideo ? "Cuộc gọi video" : "Cuộc gọi thoại")}
@@ -338,13 +371,12 @@ export default function MessageItem({
                         </div>
                     </div>
 
-                    <button 
+                    <button
                         onClick={() => onRecall?.(callData?.callType)}
-                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                            isMe 
-                            ? 'bg-white/20 hover:bg-white/30 text-white' 
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-2 ${isMe
+                            ? 'bg-white/20 hover:bg-white/30 text-white'
                             : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                        }`}
+                            }`}
                     >
                         {isVideo ? <FaVideo size={12} /> : <FaPhone size={12} />}
                         Gọi lại
