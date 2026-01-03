@@ -3,7 +3,6 @@ import { useDispatch } from "react-redux";
 import { chatSocketServer } from "../services/socket";
 import { addMessage, setHistory } from "../redux/slices/chatSlice";
 import { setListUser } from "../redux/slices/listUserSlice";
-import { getLocalActions, getMsgKey } from "../utils/localMessageActions";
 import {
   tryParseCustomPayload,
   makeChatKeyFromWs,
@@ -58,53 +57,45 @@ export function useChatSocket(currentUser, callLogic) {
       if (!chatKey) return;
 
       const now = Date.now();
+      const actionTime =
+        typeof d?.actionTime === "number" && d.actionTime ? d.actionTime : now;
+      const msgId = d?.id ?? actionTime;
 
-      const messageObj = {
-        id: now + Math.random(),
-        text: isCallLog
-          ? parsed.text || "Cuộc gọi"
-          : parsed?.text || rawText || "[Tin nhắn]",
-        rawMes: rawText,
-        mes: rawText,
-        sender:
-          String(from).toLowerCase() === String(currentUser).toLowerCase()
-            ? "user"
-            : "other",
-        actionTime: now,
-        time: formatVNDateTime(now),
-        type: isCallLog ? "call_log" : parsed?.type || "text",
-        from,
-        to,
-        url: parsed?.url || null,
-        fileName: parsed?.fileName || null,
-        meta: parsed?.meta || null,
-        blocks: parsed?.blocks || [],
-        callType: parsed?.callType || null,
-        duration: parsed?.duration || null,
-        wasMissed: parsed?.wasMissed || false,
-      };
-
-      const { deleted, recalled } = getLocalActions(chatKey);
-      const key = getMsgKey(messageObj);
-      if (deleted.has(key)) return;
-      const finalMessage = recalled.has(key)
-        ? {
-            ...messageObj,
-            recalled: true,
-            text: "",
-            url: null,
-            fileName: null,
-            blocks: [],
-          }
-        : messageObj;
-
-      dispatch(addMessage({ chatKey, message: finalMessage }));
+      dispatch(
+        addMessage({
+          chatKey,
+          message: {
+            id: msgId,
+            text: isCallLog
+              ? parsed.text || "Cuộc gọi"
+              : parsed?.text || rawText || "[Tin nhắn]",
+            rawMes: typeof d?.rawMes === "string" ? d.rawMes : rawText,
+            mes: typeof d?.mes === "string" ? d.mes : rawText,
+            sender:
+              String(from).toLowerCase() === String(currentUser).toLowerCase()
+                ? "user"
+                : "other",
+            actionTime,
+            time: formatVNDateTime(actionTime),
+            type: isCallLog ? "call_log" : parsed?.type || "text",
+            from,
+            to,
+            url: parsed?.url || null,
+            fileName: parsed?.fileName || null,
+            meta: parsed?.meta || null,
+            blocks: parsed?.blocks || [],
+            callType: parsed?.callType || null,
+            duration: parsed?.duration || null,
+            wasMissed: parsed?.wasMissed || false,
+          },
+        })
+      );
 
       dispatch(
         setListUser({
           name: chatKey.split(":")[1],
           lastMessage: parsed?.text || rawText,
-          actionTime: now,
+          actionTime,
           type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
         })
       );
@@ -126,8 +117,9 @@ export function useChatSocket(currentUser, callLogic) {
           return null;
         }
 
-        const ts = m?.createAt ? Date.parse(m.createAt) : 0;
-        const actionTime = !Number.isNaN(ts) && ts ? ts : Date.now();
+        const ts = m?.createAt ? Date.parse(m.createAt) : NaN;
+        const actionTime =
+          !Number.isNaN(ts) && ts ? ts : m?.actionTime || Date.now();
 
         const isCallLog =
           parsed?.customType === "call_log" || parsed?.type === "call_log";
@@ -156,63 +148,37 @@ export function useChatSocket(currentUser, callLogic) {
           fileName: parsed?.fileName || null,
           meta: parsed?.meta || null,
           blocks: parsed?.blocks || [],
+          rawMes: typeof m?.mes === "string" ? m.mes : "",
+          mes: typeof m?.mes === "string" ? m.mes : "",
         };
       };
 
       if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
         const otherUser =
           data[0]?.name === currentUser ? data[0]?.to : data[0]?.name;
-        const chatKey = `user:${otherUser}`;
-
-        const { deleted, recalled } = getLocalActions(chatKey);
-
-        const messages = data
-          .slice()
-          .reverse()
-          .map(mapHistoryMessage)
-          .filter(Boolean)
-          .filter((m) => !deleted.has(getMsgKey(m)))
-          .map((m) => {
-            if (!recalled.has(getMsgKey(m))) return m;
-            return {
-              ...m,
-              recalled: true,
-              text: "",
-              url: null,
-              fileName: null,
-              blocks: [],
-              poll: null,
-            };
-          });
-
-        dispatch(setHistory({ chatKey, messages }));
+        dispatch(
+          setHistory({
+            chatKey: `user:${otherUser}`,
+            messages: data
+              .slice()
+              .reverse()
+              .map(mapHistoryMessage)
+              .filter(Boolean),
+          })
+        );
       }
 
       if (event === "GET_ROOM_CHAT_MES" && Array.isArray(data?.chatData)) {
-        const chatKey = `group:${data.name}`;
-
-        const { deleted, recalled } = getLocalActions(chatKey);
-
-        const messages = data.chatData
-          .slice()
-          .reverse()
-          .map(mapHistoryMessage)
-          .filter(Boolean)
-          .filter((m) => !deleted.has(getMsgKey(m)))
-          .map((m) => {
-            if (!recalled.has(getMsgKey(m))) return m;
-            return {
-              ...m,
-              recalled: true,
-              text: "",
-              url: null,
-              fileName: null,
-              blocks: [],
-              poll: null,
-            };
-          });
-
-        dispatch(setHistory({ chatKey, messages }));
+        dispatch(
+          setHistory({
+            chatKey: `group:${data.name}`,
+            messages: data.chatData
+              .slice()
+              .reverse()
+              .map(mapHistoryMessage)
+              .filter(Boolean),
+          })
+        );
       }
     };
 
