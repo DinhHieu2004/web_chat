@@ -61,10 +61,30 @@ const chatSlice = createSlice({
         type: arr[idx].type || "text",
       };
     },
+    insertMessageAt(state, action) {
+      const { chatKey, index, message: newMessage } = action.payload || {};
+      if (!chatKey || !newMessage?.id) return;
+      if (!state.messagesMap[chatKey]) state.messagesMap[chatKey] = [];
+      const arr = state.messagesMap[chatKey];
+      if (arr.some((m) => m?.id === newMessage.id)) return;
+      const safeIndex = Math.max(
+        0,
+        Math.min(typeof index === "number" ? index : arr.length, arr.length)
+      );
+      arr.splice(safeIndex, 0, newMessage);
+    },
   },
 });
 
-export const { setActiveChat, initChat, addMessage, clearChat, setHistory, removeMessage, recallMessage } =
-  chatSlice.actions;
+export const {
+  setActiveChat,
+  initChat,
+  addMessage,
+  insertMessageAt,
+  clearChat,
+  setHistory,
+  removeMessage,
+  recallMessage,
+} = chatSlice.actions;
 
 export default chatSlice.reducer;
