@@ -26,6 +26,7 @@ export default function useChatLogic({
   );
   const contacts = useSelector((state) => state?.listUser?.list || []);
   const messagesEndRef = useRef(null);
+  const skipNextAutoScrollRef = useRef(false);
 
   const ui = useChatState();
   const callLogic = useCallLogic({ activeChat, currentUser, dispatch });
@@ -47,7 +48,12 @@ export default function useChatLogic({
     const prevLen = prevLenRef.current;
     const nextLen = messages?.length || 0;
     prevLenRef.current = nextLen;
+
     if (nextLen > prevLen) {
+      if (skipNextAutoScrollRef.current) {
+        skipNextAutoScrollRef.current = false;
+        return;
+      }
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
@@ -60,6 +66,7 @@ export default function useChatLogic({
     activeChat,
     messages,
     messagesEndRef,
+    chatKey,
     contacts,
     callLogic,
     getPurePreview,
@@ -70,12 +77,16 @@ export default function useChatLogic({
       handleSendLocation: location.sendLocation,
       handleDeleteForMe: actions.handleDeleteForMe,
       handleRecallMessage: actions.handleRecallLocal,
+      handleUndoDeleteForMe: actions.handleUndoDeleteForMe,
       handleChatSelect: (contact) => {
         setActiveChat(contact);
         loadHistory(1, contact);
         ui.setShowEmojiPicker(false);
         ui.setShowStickerPicker(false);
         ui.setShowGroupMenu(false);
+      },
+      markSkipNextAutoScroll: () => {
+        skipNextAutoScrollRef.current = true;
       },
       loadHistory,
       startReply: (msg) => ui.setReplyMsg(msg),

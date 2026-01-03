@@ -1,16 +1,22 @@
 import { chatSocketServer } from "../services/socket";
 import { uploadFileToS3 } from "../services/fileUploader";
+
 import {
   addMessage,
   removeMessage,
   recallMessage,
+  insertMessageAt,
 } from "../redux/slices/chatSlice";
+
 import { setListUser } from "../redux/slices/listUserSlice";
+
 import {
   getMsgKey,
   addLocalDeleted,
   addLocalRecalled,
+  removeLocalDeleted,
 } from "../utils/localMessageActions";
+
 import {
   makeOutgoingPayload,
   formatVNDateTime,
@@ -119,6 +125,21 @@ export function useChatActions({
     addLocalRecalled(chatKey, msgKey);
 
     dispatch(recallMessage({ chatKey, id: msg.id }));
+  };
+
+  const handleUndoDeleteForMe = (targetChatKey, msg, restoreIndex) => {
+    if (!msg?.id || !targetChatKey) return;
+
+    const msgKey = getMsgKey(msg);
+    removeLocalDeleted(targetChatKey, msgKey);
+
+    dispatch(
+      insertMessageAt({
+        chatKey: targetChatKey,
+        index: typeof restoreIndex === "number" ? restoreIndex : 0,
+        message: msg,
+      })
+    );
   };
 
   return {
@@ -279,5 +300,6 @@ export function useChatActions({
     },
     handleDeleteForMe,
     handleRecallLocal,
+    handleUndoDeleteForMe,
   };
 }

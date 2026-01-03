@@ -6,16 +6,16 @@ export const getMsgKey = (m) => {
   const actionTime = m?.actionTime || "";
   const type = m?.type || "text";
 
-  const text =
-    typeof m?.text === "string"
-      ? m.text
-      : (m?.text?.text || "");
+  const text = typeof m?.text === "string" ? m.text : m?.text?.text || "";
 
   const url = m?.url || "";
   const fileName = m?.fileName || "";
   const rawMes = typeof m?.rawMes === "string" ? m.rawMes : "";
 
-  return `${from}|${to}|${actionTime}|${type}|${text}|${url}|${fileName}|${rawMes}`.slice(0, 800);
+  return `${from}|${to}|${actionTime}|${type}|${text}|${url}|${fileName}|${rawMes}`.slice(
+    0,
+    800
+  );
 };
 
 const readAll = () => {
@@ -62,4 +62,17 @@ export const getLocalActions = (chatKey) => {
     deleted: new Set(cur.deleted || []),
     recalled: new Set(cur.recalled || []),
   };
+};
+
+export const removeLocalDeleted = (chatKey, msgKey) => {
+  if (!chatKey || !msgKey) return;
+  const all = readAll();
+  const cur = all[chatKey] || { deleted: [], recalled: [] };
+  cur.deleted = (cur.deleted || []).filter((k) => k !== msgKey);
+  if ((cur.deleted?.length || 0) === 0 && (cur.recalled?.length || 0) === 0) {
+    delete all[chatKey];
+  } else {
+    all[chatKey] = cur;
+  }
+  writeAll(all);
 };
