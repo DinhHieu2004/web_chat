@@ -10,7 +10,8 @@ export default function MessageList({
     onForward,
     onVote,
     callLogic,
-    
+    onDeleteForMe,
+    onRecallMessage,
 }) {
     const isRoom = activeChat?.type === "room";
 
@@ -32,6 +33,8 @@ export default function MessageList({
                         onForward={onForward}
                         onVote={onVote}
                         onRecall={(type) => type === 'video' ? callLogic.startVideoCall() : callLogic.startVoiceCall()}
+                        onDeleteForMe={onDeleteForMe}
+                        onRecallMessage={onRecallMessage}
                     />
                 </div>
             ))}

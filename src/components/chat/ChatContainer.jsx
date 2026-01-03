@@ -1,6 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { setActiveChat } from "../../redux/slices/listUserSlice";
+import { useMemo } from "react";
 
 import ChatSearchPanel from "./ChatSearchPanel";
 import ForwardMessageModal from "./ForwardMessageModal";
@@ -68,6 +69,8 @@ export default function ChatContainer({ toggleTheme }) {
                             onVoiceCall: chat.callLogic.startVoiceCall,
                             onVideoCall: chat.callLogic.startVideoCall,
                         }}
+                        onDeleteForMe={chat.handlers.handleDeleteForMe}
+                        onRecallMessage={chat.handlers.handleRecallMessage}
                         activeChat={activeChat}
                         messages={chat.messages}
                         input={chat.input}
