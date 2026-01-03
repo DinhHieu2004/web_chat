@@ -21,6 +21,8 @@ export default function ChatArea({
     typing,
     callLogic,
     location,
+    onDeleteForMe,
+    onRecallMessage,
     ...rest
 }) {
     const typingUsers =
@@ -48,6 +50,8 @@ export default function ChatArea({
                 onForward={handlers.startForward}
                 onVote={handlers?.handleSendPollVote}
                 callLogic={handlers.callLogic}
+                onDeleteForMe={onDeleteForMe}
+                onRecallMessage={onRecallMessage}
             />
             {showGroupMenu && isGroupChat && (
                 <PollCreator
