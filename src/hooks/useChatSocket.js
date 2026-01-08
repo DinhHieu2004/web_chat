@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { chatSocketServer } from "../services/socket";
 import { addMessage, setHistory } from "../redux/slices/chatSlice";
 import { setListUser } from "../redux/slices/listUserSlice";
@@ -12,7 +12,9 @@ import {
 export function useChatSocket(currentUser, callLogic) {
   const dispatch = useDispatch();
 
-  useEffect(() => {
+    const activeChatId = useSelector(state => state.listUser.activeChatId);
+
+    useEffect(() => {
     if (!currentUser) return;
 
     const onIncoming = (payload) => {
@@ -55,10 +57,12 @@ export function useChatSocket(currentUser, callLogic) {
       });
 
       if (!chatKey) return;
+        const isActiveChat = chatKey.split(":")[1] === activeChatId;
 
-      const now = Date.now();
-      const actionTime =
-        typeof d?.actionTime === "number" && d.actionTime ? d.actionTime : now;
+        console.log(isActiveChat)
+
+        const now = Date.now();
+      const actionTime = typeof d?.actionTime === "number" && d.actionTime ? d.actionTime : now;
       const msgId = d?.id ?? actionTime;
 
       dispatch(
@@ -91,14 +95,17 @@ export function useChatSocket(currentUser, callLogic) {
         })
       );
 
-      dispatch(
-        setListUser({
-          name: chatKey.split(":")[1],
-          lastMessage: parsed?.text || rawText,
-          actionTime,
-          type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
-        })
-      );
+          dispatch(
+              setListUser({
+                  name: chatKey.split(":")[1],
+                  lastMessage: parsed?.text || rawText,
+                  actionTime,
+                  type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
+                  increaseUnread: !isActiveChat,
+                  noReorder: isActiveChat
+              })
+          );
+
     };
 
     const onHistory = (payload) => {
