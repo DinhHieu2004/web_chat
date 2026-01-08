@@ -29,12 +29,13 @@ export default function ChatArea({
   onCloseUndoToast,
   ...rest
 }) {
-  const typingUsers =
-    typing && typeof typing === "object"
-      ? Object.entries(typing)
-          .filter(([_, isTyping]) => !!isTyping)
-          .map(([user]) => user)
-      : [];
+  // const typingUsers =
+  //   typing && typeof typing === "object"
+  //     ? Object.entries(typing)
+  //         .filter(([_, isTyping]) => !!isTyping)
+  //         .map(([user]) => user)
+  //     : [];
+  const typingUsers = ["Nguyễn Văn A", "Trần Thị B"];
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">

@@ -66,6 +66,7 @@ export default function MessageItem({
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
   if (
+    msg.type === "typing" ||
     msg.type === "call_request" ||
     msg.type === "call_accepted" ||
     msg.type === "call_rejected" ||

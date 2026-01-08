@@ -1,77 +1,50 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { chatSocketServer } from "../services/socket";
-import { makeOutgoingPayload } from "../utils/chatDataFormatter";
+import { makeOutgoingPayload } from "../utils/chatDataFormatter"
 
 export function useTypingLogic({ activeChat, userName, input }) {
     const [typing, setTyping] = useState({});
-    const typingTimeoutRef = useRef(null);
     const isTypingActive = useRef(false);
 
-    const sendTypingSignal = useCallback((isTyping) => {
+    const sendTypingSignal = useCallback((isTying) => {
         if (!activeChat) return;
 
+        const payload = JSON.stringify({
+            customType: "typing",
+            isTying,
+
+        })
         chatSocketServer.send(
             "SEND_CHAT",
             makeOutgoingPayload({
                 type: activeChat.type,
                 to: activeChat.name,
-                mes: JSON.stringify({
-                    customType: "typing",
-                    isTyping: isTyping,
-                    from: userName,
-                }),
-            })
+                mes: payload
+
+            }),
         );
-    }, [activeChat, userName]);
+    }, [activeChat]);
 
-    useEffect(() => {
-        if (!input?.trim()) {
-            if (isTypingActive.current) {
-                sendTypingSignal(false);
-                isTypingActive.current = false;
-            }
-            return;
-        }
+    const handleBlur = useCallback(() => {
+        if (!isTypingActive.current) return;
 
-        if (!isTypingActive.current) {
-            sendTypingSignal(true);
-            isTypingActive.current = true;
-        }
-
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-        typingTimeoutRef.current = setTimeout(() => {
-            sendTypingSignal(false);
-            isTypingActive.current = false;
-        }, 3000);
-
-        return () => {
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        };
-    }, [input, sendTypingSignal]);
+        sendTypingSignal(false);
+        isTypingActive.current = false;
+    }, [sendTypingSignal]);
 
     const handleIncomingTyping = useCallback((parsed, from) => {
-        if (parsed?.customType === "typing") {
-            if (parsed.isTyping) {
-                setTyping((prev) => ({ ...prev, [from]: true }));
+        if (parsed?.customType !== "typing") return false;
 
-                setTimeout(() => {
-                    setTyping((prev) => {
-                        const updated = { ...prev };
-                        delete updated[from];
-                        return updated;
-                    });
-                }, 5000);
-            } else {
-                setTyping((prev) => {
-                    const updated = { ...prev };
-                    delete updated[from];
-                    return updated;
-                });
-            }
-            return true;
+        if (parsed.isTyping) {
+            setTyping(prev => ({ ...prev, [from]: true }));
+        } else {
+            setTyping(prev => {
+                const updated = { ...prev };
+                delete updated[from];
+                return updated;
+            });
         }
-        return false;
+        return true;
     }, []);
 
     useEffect(() => {
@@ -79,17 +52,11 @@ export function useTypingLogic({ activeChat, userName, input }) {
         isTypingActive.current = false;
     }, [activeChat?.name]);
 
-    const stopTyping = useCallback(() => {
-        if (isTypingActive.current) {
-            sendTypingSignal(false);
-            isTypingActive.current = false;
-        }
-    }, [sendTypingSignal]);
-
     return {
         typing,
+        handleFocus,
+        handleBlur,
         handleIncomingTyping,
-        stopTyping, 
-
     };
+
 }
