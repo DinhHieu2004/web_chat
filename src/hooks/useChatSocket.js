@@ -131,8 +131,8 @@ export function useChatSocket(currentUser, callLogic) {
               ? parsed.text
               : m?.mes || ""
             : parsed
-            ? parsed.text
-            : m?.mes || "",
+              ? parsed.text
+              : m?.mes || "",
 
           sender:
             String(m?.name).toLowerCase() === String(currentUser).toLowerCase()

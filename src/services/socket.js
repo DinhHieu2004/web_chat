@@ -50,23 +50,48 @@ class ChatSocketServer {
 
             this.socket.onmessage = (event) => {
                 try {
-                    const data = JSON.parse(event.data);
-                    console.log("received:", data);
-                    if (data?.event === "AUTH" && data?.status === "error") {
-                        console.warn("[WS] AUTH error:", data?.mes);
+                    const packet = JSON.parse(event.data);
+                    console.log("received:", packet);
+
+                    if (packet?.event === "AUTH" && packet?.status === "error") {
+                        console.warn("[WS] AUTH error:", packet?.mes);
                         this.setAuthed(false);
 
                         const allowed = new Set(["LOGIN", "RE_LOGIN", "REGISTER"]);
                         this.queue = this.queue.filter((p) => allowed.has(p?.data?.event));
+                        return;
                     }
 
-                    if (data?.event && this.listeners[data.event]) {
-                        this.listeners[data.event].forEach((cb) => cb(data));
+                    if (packet?.event === "SEND_CHAT") {
+                        const msg = packet.data;
+                        const mesObj = JSON.parse(msg.mes || "{}");
+
+                        if (mesObj.customType === "typing") {
+                            if (this.listeners["TYPING"]) {
+                                this.listeners["TYPING"].forEach(cb =>
+                                    cb({
+                                        from: mesObj.from,
+                                        isTyping: mesObj.isTyping,
+                                        to: msg.to
+                                    })
+                                );
+                            }
+                            return; 
+                        }
+
+                        if (!msg.id || msg.id === 0) {
+                            msg.id = crypto.randomUUID();
+                        }
+                    }
+
+                    if (packet?.event && this.listeners[packet.event]) {
+                        this.listeners[packet.event].forEach((cb) => cb(packet));
                     }
                 } catch (e) {
                     console.error("Failed to parse JSON message:", e, event.data);
                 }
             };
+
 
             this.socket.onclose = (evt) => {
                 console.warn("WebSocket disconnected", {
@@ -113,14 +138,14 @@ class ChatSocketServer {
         if (!this.isAuthed) return;
         this.stopHeartbeat();
 
-    this.heartbeatInterval = setInterval(() => {
-      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-        // this.send(HEARTBEAT_ACTION, {});
-      } else {
-        this.stopHeartbeat();
-      }
-    }, HEARTBEAT_INTERVAL);
-  }
+        this.heartbeatInterval = setInterval(() => {
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                // this.send(HEARTBEAT_ACTION, {});
+            } else {
+                this.stopHeartbeat();
+            }
+        }, HEARTBEAT_INTERVAL);
+    }
 
     stopHeartbeat() {
         if (this.heartbeatInterval) {

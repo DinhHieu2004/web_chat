@@ -116,8 +116,6 @@ export default function MessageItem({
 
   const rawMes = typeof msg.mes === "string" ? msg.mes : msg.rawMes || "";
 
-  console.log("mgs :", msg);
-  console.log("finalType :", finalType);
 
   let callData = null;
   if (finalType === "call_log" && rawMes.startsWith("{")) {
