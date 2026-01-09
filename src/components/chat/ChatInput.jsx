@@ -30,6 +30,8 @@ export default function ChatInput({
     getMessagePreview,
     isGroupChat,
     location,
+    handleBlur,
+    handleFocus,
 }) {
 
     const [showLocaltionCF, setShowLocaltionCF] = useState(false);
@@ -412,6 +414,8 @@ export default function ChatInput({
                     <div className="flex-1" />
                     <button
                         onClick={selectedFile ? handleSendWithFile : (richMode ? onSendRichText : handleSend)}
+
+                        
                         disabled={isUploading || (!input.trim() && !selectedFile && !(richMode && richContent.trim()))}
                         className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Gửi"
@@ -484,6 +488,11 @@ export default function ChatInput({
                                 handleSend();
                             }
                         }}
+
+                        onFocus={handleFocus}
+                        onBlur={handleBlur}
+
+
                         placeholder="Nhập tin nhắn..."
                         className="w-full px-4 py-2 border border-gray-300 rounded-full"
                         disabled={isUploading}

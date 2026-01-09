@@ -167,7 +167,6 @@ export default function ChatContainer({ toggleTheme }) {
             toggleEmojiPicker={chat.handlers.toggleEmojiPicker}
             showEmojiPicker={chat.showEmojiPicker}
             showGroupMenu={chat.showGroupMenu}
-            typing={chat.typing}
             callLogic={chat.callLogic}
             location={chat.location}
           />

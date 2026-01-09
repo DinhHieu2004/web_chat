@@ -66,6 +66,7 @@ export default function MessageItem({
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
   if (
+    msg.type === "typing" ||
     msg.type === "call_request" ||
     msg.type === "call_accepted" ||
     msg.type === "call_rejected" ||
@@ -115,8 +116,6 @@ export default function MessageItem({
 
   const rawMes = typeof msg.mes === "string" ? msg.mes : msg.rawMes || "";
 
-  console.log("mgs :", msg);
-  console.log("finalType :", finalType);
 
   let callData = null;
   if (finalType === "call_log" && rawMes.startsWith("{")) {

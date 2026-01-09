@@ -4,6 +4,8 @@ import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import PollCreator from "./PollCreator";
 import { Check } from "lucide-react";
+import {useTypingLogic} from "../../hooks/useTypingLogic";
+import { useSelector } from "react-redux";
 
 export default function ChatArea({
   activeChat,
@@ -19,7 +21,6 @@ export default function ChatArea({
   isGroupChat,
   toggleSearchPanel,
   messageRefs,
-  typing,
   callLogic,
   location,
   onDeleteForMe,
@@ -29,12 +30,15 @@ export default function ChatArea({
   onCloseUndoToast,
   ...rest
 }) {
-  const typingUsers =
-    typing && typeof typing === "object"
-      ? Object.entries(typing)
-          .filter(([_, isTyping]) => !!isTyping)
-          .map(([user]) => user)
-      : [];
+
+  const myName = useSelector(state => state.auth.user);
+
+  const { typing, handleFocus, handleBlur } = useTypingLogic({ activeChat });
+
+  console.log("typing: ", typing)
+
+  const typingUsers = Object.keys(typing).filter(name => String(name) !== String(myName));
+  console.log("typing user: ", typingUsers)
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
@@ -89,6 +93,8 @@ export default function ChatArea({
         isGroupChat={isGroupChat}
         toggleGroupMenu={toggleGroupMenu}
         location={location}
+        handleBlur ={handleBlur}
+        handleFocus = {handleFocus}
         {...rest}
       />
       {undoToast && (
