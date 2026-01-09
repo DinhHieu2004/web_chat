@@ -8,6 +8,7 @@ import {
 } from "react-icons/fa";
 import { FaVideo, FaPhone, FaPhoneSlash } from "react-icons/fa";
 import { FaEllipsisH, FaTrash, FaUndo } from "react-icons/fa";
+import LinkifyText from "./LinkifyText";
 
 const decodeEmojiFromCpsJson = (raw) => {
   if (typeof raw !== "string") return "";
@@ -115,8 +116,8 @@ export default function MessageItem({
 
   const rawMes = typeof msg.mes === "string" ? msg.mes : msg.rawMes || "";
 
-  console.log("mgs :", msg);
-  console.log("finalType :", finalType);
+  // console.log("mgs :", msg);
+  // console.log("finalType :", finalType);
 
   let callData = null;
   if (finalType === "call_log" && rawMes.startsWith("{")) {
@@ -207,7 +208,7 @@ export default function MessageItem({
 
                 return (
                   <span key={j} style={style}>
-                    {span.text}
+                    <LinkifyText text={span.text} />
                   </span>
                 );
               })
@@ -326,7 +327,7 @@ export default function MessageItem({
             typeof pvText === "string" &&
             pvText.trim() && (
               <p className="text-sm wrap-break-words whitespace-pre-wrap">
-                {pvText}
+                  <LinkifyText text={pvText} />
               </p>
             )}
         </div>
@@ -555,7 +556,7 @@ export default function MessageItem({
                 finalUrl ? "mt-2" : ""
               }`}
             >
-              {safeText}
+                    <LinkifyText text={safeText} />
             </p>
           )}
       </div>
@@ -640,7 +641,7 @@ export default function MessageItem({
 
                   {!preview?.url && replyPreviewText && (
                     <div className="opacity-80 truncate">
-                      {replyPreviewText}
+                        <LinkifyText text={replyPreviewText} />
                     </div>
                   )}
                 </div>
