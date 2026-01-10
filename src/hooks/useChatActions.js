@@ -76,6 +76,22 @@ export function useChatActions({
     );
   };
 
+  const sendReaction = ({ messageId, emoji }) => {
+    if (!activeChat?.id) return;
+
+    const payload = {
+      chatId: activeChat.id,
+      messageId,
+      emoji, 
+      userId: auth.user.id,
+      type: "reaction",
+    };
+    
+    dispatch(addReactionOptimistic(payload));
+
+    socket.emit("SEND_REACTION", payload);
+  };
+
   const commonEmit = (payload, localData) => {
     chatSocketServer.send(
       "SEND_CHAT",
@@ -317,5 +333,6 @@ export function useChatActions({
     handleRecallLocal,
     handleUndoDeleteForMe,
     handleToggleReaction,
+    sendReaction,
   };
 }

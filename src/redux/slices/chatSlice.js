@@ -95,6 +95,24 @@ const chatSlice = createSlice({
         msg.reactions[emoji] = [...users, user];
       }
     },
+
+    addReactionOptimistic(state, action) {
+      const { messageId, emoji, userId } = action.payload;
+      const msg = state.messages.find((m) => m.id === messageId);
+      if (!msg) return;
+
+      if (!msg.reactions) msg.reactions = {};
+      msg.reactions[userId] = emoji;
+    },
+
+    receiveReaction(state, action) {
+      const { messageId, emoji, userId } = action.payload;
+      const msg = state.messages.find((m) => m.id === messageId);
+      if (!msg) return;
+
+      if (!msg.reactions) msg.reactions = {};
+      msg.reactions[userId] = emoji;
+    },
   },
 });
 
@@ -108,6 +126,8 @@ export const {
   removeMessage,
   recallMessage,
   toggleReaction,
+  addReactionOptimistic,
+  receiveReaction,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;
