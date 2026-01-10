@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import EmojiPicker from "emoji-picker-react";
 import {
   FaUserCircle,
   FaFileAlt,
@@ -57,6 +58,7 @@ export default function MessageItem({
 }) {
   const [openOpt, setOpenOpt] = useState(false);
   const optRef = useRef(null);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   useEffect(() => {
     const onDown = (e) => {
