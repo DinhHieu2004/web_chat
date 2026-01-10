@@ -73,6 +73,28 @@ const chatSlice = createSlice({
       );
       arr.splice(safeIndex, 0, newMessage);
     },
+
+    toggleReaction(state, action) {
+      const { chatKey, messageId, emoji, user } = action.payload;
+      const arr = state.messagesMap[chatKey];
+      if (!arr) return;
+
+      const msg = arr.find((m) => m.id === messageId);
+      if (!msg) return;
+
+      if (!msg.reactions) msg.reactions = {};
+
+      const users = msg.reactions[emoji] || [];
+
+      if (users.includes(user)) {
+        msg.reactions[emoji] = users.filter((u) => u !== user);
+        if (msg.reactions[emoji].length === 0) {
+          delete msg.reactions[emoji];
+        }
+      } else {
+        msg.reactions[emoji] = [...users, user];
+      }
+    },
   },
 });
 
@@ -85,6 +107,7 @@ export const {
   setHistory,
   removeMessage,
   recallMessage,
+  toggleReaction,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;
