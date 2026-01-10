@@ -42,7 +42,9 @@ export default function useChatLogic({
     dispatch,
   });
 
+  
   const { loadHistory } = useChatSocket(currentUser, callLogic);
+
 
   useEffect(() => {
     const prevLen = prevLenRef.current;
@@ -74,6 +76,7 @@ export default function useChatLogic({
     handlers: {
       ...actions,
       ...poll,
+
       handleSendLocation: location.sendLocation,
       handleDeleteForMe: actions.handleDeleteForMe,
       handleRecallMessage: actions.handleRecallLocal,

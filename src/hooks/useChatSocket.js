@@ -116,6 +116,7 @@ export function useChatSocket(currentUser, callLogic) {
         const parsed = tryParseCustomPayload(m?.mes);
 
         if (
+          parsed?.customType === "typing" ||
           parsed?.customType === "call_request" ||
           parsed?.customType === "call_accepted" ||
           parsed?.customType === "call_rejected" ||
@@ -137,8 +138,8 @@ export function useChatSocket(currentUser, callLogic) {
               ? parsed.text
               : m?.mes || ""
             : parsed
-            ? parsed.text
-            : m?.mes || "",
+              ? parsed.text
+              : m?.mes || "",
 
           sender:
             String(m?.name).toLowerCase() === String(currentUser).toLowerCase()
