@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {useDispatch, useSelector} from "react-redux";
 import {
     getList,
@@ -11,6 +11,7 @@ import {tryParseCustomPayload} from "../utils/chatDataFormatter.js";
 
 export default function useSidebarLogic(searchTerm, onSelectContact) {
     const dispatch = useDispatch();
+    const [activeTab, setActiveTab] = useState("all");
     const {list, activeChatId} = useSelector((state) => state.listUser);
     const {isAuthenticated, user} = useSelector((state) => state.auth);
     const bootedRef = useRef(false);
@@ -107,7 +108,8 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
                     name: key,
                     lastMessage: preview,
                     actionTime: Date.now(),
-                    type: type === "room" ? "room" : "people"
+                    type: type === "room" ? "room" : "people",
+                    noReorder: false
                 })
             );
         };
@@ -201,12 +203,17 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     }, [list, user, dispatch]);
 
     const filtered = useMemo(() => {
-        return list.filter((c) =>
-            (c.name || "")
-                .toLowerCase()
-                .includes((searchTerm || "").toLowerCase())
-        );
-    }, [list, searchTerm]);
+        const keyword = (searchTerm || "").toLowerCase();
+
+        return list.filter(c => {
+            if (!c.name?.toLowerCase().includes(keyword)) return false;
+
+            if (activeTab === "user") return c.type !== "room";
+            if (activeTab === "room") return c.type === "room";
+
+            return true;
+        });
+    }, [list, searchTerm, activeTab]);
 
     const handleSelect = (item) => {
         dispatch(setActiveChat(item.name));
@@ -219,5 +226,5 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
         );
         onSelectContact?.(item);
     };
-    return {list, filtered, activeChatId, handleSelect};
+    return {list, filtered, activeChatId, handleSelect, activeTab, setActiveTab};
 }

@@ -15,7 +15,7 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
         state => state.listUser
     );
 
-    const {filtered, activeChatId, handleSelect} = useSidebarLogic(
+    const {filtered, activeChatId, handleSelect, activeTab, setActiveTab} = useSidebarLogic(
         searchTerm,
         onSelectContact
     );
@@ -55,7 +55,26 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
                     </button>
                 </div>
             </div>
-
+            <div className="flex rounded-lg">
+                {[
+                    { key: "all", label: "Tất cả" },
+                    { key: "user", label: "Bạn" },
+                    { key: "room", label: "Phòng" },
+                ].map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        className={`flex-1 py-1.5 text-sm rounded-md
+                ${activeTab === tab.key
+                            ? "bg-white shadow text-purple-600 font-medium"
+                            : "text-gray-500"}
+            `}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+            <div className="border-b border-gray-200" />
             <div className="flex-1 overflow-y-auto">
                 {filtered.map((c) => (
                     <ContactItem

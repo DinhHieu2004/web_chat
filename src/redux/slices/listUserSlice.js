@@ -76,7 +76,7 @@ const listUserSlice = createSlice({
             let newList = [...state.list];
 
             const increaseUnread = user.increaseUnread === true;
-            const noReorder = user.noReorder === true;
+            const noReorder = user.noReorder === true && !user.lastMessage;
 
             if (index !== -1) {
                 const old = newList[index];
