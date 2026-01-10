@@ -6,6 +6,7 @@ import {
   removeMessage,
   recallMessage,
   insertMessageAt,
+  toggleReaction,
 } from "../redux/slices/chatSlice";
 
 import { setListUser } from "../redux/slices/listUserSlice";
@@ -60,6 +61,19 @@ export function useChatActions({
     } catch {
       return mes;
     }
+  };
+
+  const handleToggleReaction = (message, emoji) => {
+    if (!message?.id || !emoji) return;
+
+    dispatch(
+      toggleReaction({
+        chatKey,
+        messageId: message.id,
+        emoji,
+        user: currentUser,
+      })
+    );
   };
 
   const commonEmit = (payload, localData) => {
@@ -298,8 +312,10 @@ export function useChatActions({
         sender: "user",
       });
     },
+
     handleDeleteForMe,
     handleRecallLocal,
     handleUndoDeleteForMe,
+    handleToggleReaction,
   };
 }
