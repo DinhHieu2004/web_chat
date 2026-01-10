@@ -3,19 +3,19 @@ import SidebarSearch from "./SidebarSearch";
 import ContactItem from "./ContactItem";
 import CreateRoomModal from "../room/CreateRoomModal";
 import JoinRoomModal from "../room/JoinRoomModal";
-import { setShowCreateModal, setShowJoinModal } from "../../redux/slices/listUserSlice";
-import { useDispatch, useSelector } from "react-redux";
+import {setShowCreateModal, setShowJoinModal} from "../../redux/slices/listUserSlice";
+import {useDispatch, useSelector} from "react-redux";
 import useSidebarLogic from "../../hooks/useSidebarLogic";
 import '../../assets/css/dark_light.css';
-import { FaSun, FaMoon } from "react-icons/fa";
+import {FaSun, FaMoon} from "react-icons/fa";
 
 export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, toggleTheme}) {
     const dispatch = useDispatch();
-    const { showJoinModal, showCreateModal } = useSelector(
+    const {showJoinModal, showCreateModal} = useSelector(
         state => state.listUser
     );
 
-    const { filtered, activeChatId, handleSelect } = useSidebarLogic(
+    const {filtered, activeChatId, handleSelect, activeTab, setActiveTab} = useSidebarLogic(
         searchTerm,
         onSelectContact
     );
@@ -31,8 +31,8 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
                         className="relative w-16 h-8 rounded-full bg-gray-300 transition-colors theme-toggle"
                     >
             <span className="theme-thumb">
-                <FaSun className="icon-sun text-yellow-500" />
-                <FaMoon className="icon-moon" />
+                <FaSun className="icon-sun text-yellow-500"/>
+                <FaMoon className="icon-moon"/>
             </span>
                     </button>
                 </div>
@@ -45,15 +45,36 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
                         + Tạo nhóm
                     </button>
                     <button onClick={() => dispatch(setShowJoinModal(true))}
-                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
-                        + Tham gia</button>
+                            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
+                        + Tham gia
+                    </button>
 
                     <button
-                            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
-                        + Thêm bạn</button>
+                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
+                        + Thêm bạn
+                    </button>
                 </div>
             </div>
-
+            <div className="flex rounded-lg">
+                {[
+                    { key: "all", label: "Tất cả" },
+                    { key: "user", label: "Bạn" },
+                    { key: "room", label: "Phòng" },
+                ].map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        className={`flex-1 py-1.5 text-sm rounded-md
+                ${activeTab === tab.key
+                            ? "bg-white shadow text-purple-600 font-medium"
+                            : "text-gray-500"}
+            `}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+            <div className="border-b border-gray-200" />
             <div className="flex-1 overflow-y-auto">
                 {filtered.map((c) => (
                     <ContactItem
@@ -64,7 +85,7 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
                     />
                 ))}
             </div>
-            {showJoinModal && <JoinRoomModal />}
+            {showJoinModal && <JoinRoomModal/>}
             {showCreateModal && <CreateRoomModal/>}
         </div>
     );

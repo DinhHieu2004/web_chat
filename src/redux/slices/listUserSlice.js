@@ -75,15 +75,35 @@ const listUserSlice = createSlice({
             const index = state.list.findIndex(c => c.name === user.name);
             let newList = [...state.list];
 
+            const increaseUnread = user.increaseUnread === true;
+            const noReorder = user.noReorder === true && !user.lastMessage;
+
             if (index !== -1) {
-                newList[index] = { ...newList[index], ...user };
-                newList.unshift(newList.splice(index, 1)[0]);
+                const old = newList[index];
+
+                newList[index] = {
+                    ...old,
+                    ...user,
+                    unreadCount: increaseUnread
+                        ? (old.unreadCount || 0) + 1
+                        : increaseUnread === false
+                            ? 0
+                            : old.unreadCount
+                };
+
+                if (!noReorder) {
+                    newList.unshift(newList.splice(index, 1)[0]);
+                }
             } else {
-                newList.unshift(user);
+                newList.unshift({
+                    ...user,
+                    unreadCount: increaseUnread ? 1 : 0
+                });
             }
 
             state.list = newList;
         },
+
 
         setUserOnlineStatus: (state, action) => {
             const { name, online } = action.payload || {};
