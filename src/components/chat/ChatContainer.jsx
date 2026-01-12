@@ -9,7 +9,6 @@ import ForwardMessageModal from "./ForwardMessageModal";
 import Sidebar from "../sidebar/Sidebar";
 import ChatArea from "./ChatArea";
 import useChatLogic from "../../hooks/useChatLogic";
-import CallButtons from "./CallButtons";
 import IncomingCallModal from "./IncomingCallModal";
 import VideoCallScreen from "./VideoCallScreen";
 import { useParams, useNavigate } from "react-router-dom";
@@ -19,7 +18,7 @@ export default function ChatContainer({ toggleTheme }) {
 
   const navigate = useNavigate();
   const { username } = useParams();
-  
+
 
   const list = useSelector((state) => state.listUser.list);
   const user = useSelector((state) => state.auth.user);
@@ -32,8 +31,15 @@ export default function ChatContainer({ toggleTheme }) {
 
   const activeChatId = useSelector((state) => state.listUser.activeChatId);
   const activeChat = useMemo(() => {
-    return list.find((c) => c.name === activeChatId) || null;
-  }, [list, activeChatId]);
+    const found = list.find((c) => c.name === activeChatId);
+    if (found) return found;
+
+    if (username) {
+      return { name: username, type: "people" };
+    }
+    return null;
+  }, [list, activeChatId, username]);
+
 
 
   const handleChatSelect = (contact) => {
@@ -42,9 +48,15 @@ export default function ChatContainer({ toggleTheme }) {
 
   const chat = useChatLogic({
     activeChat,
-    setActiveChat: handleChatSelect,
+    setActiveChat: (contact) => navigate(`/chat/${contact.name}`),
     currentUser: user,
   });
+  
+  useEffect(() => {
+    if (activeChat && chat.messages.length === 0) {
+      chat.handlers.loadHistory(1, activeChat);
+    }
+  }, [activeChat, chat.messages.length, chat.handlers]);
 
   const [undoToast, setUndoToast] = useState(null);
 

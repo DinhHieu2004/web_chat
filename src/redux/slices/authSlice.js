@@ -8,20 +8,25 @@ const createSocketPromise = (event, payload, errorEvent = "ERROR") => {
       .then(() => {
         const handler = (response) => {
           chatSocketServer.off(event, handler);
-          chatSocketServer.off(errorEvent, handler);
+          chatSocketServer.off(errorEvent, errorHandler);
 
           if (response?.status === "success") resolve(response.data);
           else reject(response?.data || "Unknown error");
         };
 
+        const errorHandler = (response) => {
+          chatSocketServer.off(event, handler);
+          chatSocketServer.off(errorEvent, errorHandler);
+          reject(response?.data || response?.mes || "Unknown error");
+        };
+
         chatSocketServer.on(event, handler);
-        chatSocketServer.on(errorEvent, handler);
+        chatSocketServer.on(errorEvent, errorHandler);
         chatSocketServer.send(event, payload);
       })
       .catch(reject);
   });
 };
-
 
 export const initSocket = createAsyncThunk("auth/initSocket", async () => {
   await chatSocketServer.connect();
@@ -59,16 +64,28 @@ export const reLoginUser = createAsyncThunk(
   "auth/reLogin",
   async ({ user, code }, { rejectWithValue }) => {
     try {
+      console.log("[reLogin] Starting re-login process for:", user);
+      
+      // Đảm bảo socket đã connect
+      await chatSocketServer.connect();
+      console.log("[reLogin] Socket connected");
+      
+      // Đợi thêm để đảm bảo socket đã sẵn sàng nhận request
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log("[reLogin] Sending RE_LOGIN request");
+      
       const responseData = await createSocketPromise("RE_LOGIN", {
         user,
         code,
       });
 
+      console.log("[reLogin] Re-login successful");
       return {
         user,
         code: responseData?.RE_LOGIN_CODE ?? code,
       };
     } catch (error) {
+      console.error("[reLogin] Re-login failed:", error);
       return rejectWithValue(error);
     }
   }
@@ -77,7 +94,7 @@ export const reLoginUser = createAsyncThunk(
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    isAuthenticated: false,
+    isAuthenticated: false, // Không nên check localStorage ở đây
     user: null,
     reLoginCode: null,
     status: "idle",
@@ -155,6 +172,14 @@ const authSlice = createSlice({
       .addCase(reLoginUser.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload || "Re-login failed";
+        state.isAuthenticated = false;
+        state.user = null;
+        state.reLoginCode = null;
+        
+        // Clear localStorage khi re-login fail
+        localStorage.removeItem("user");
+        localStorage.removeItem("reLoginCode");
+        
         chatSocketServer.setAuthed(false);
       });
   },
