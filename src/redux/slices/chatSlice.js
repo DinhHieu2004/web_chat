@@ -76,42 +76,45 @@ const chatSlice = createSlice({
 
     toggleReaction(state, action) {
       const { chatKey, messageId, emoji, user } = action.payload;
-      const arr = state.messagesMap[chatKey];
-      if (!arr) return;
 
-      const msg = arr.find((m) => m.id === messageId);
+      const messages = state.messagesMap?.[chatKey];
+      if (!messages) return;
+
+      const msg = messages.find((m) => m.id === messageId);
       if (!msg) return;
 
       if (!msg.reactions) msg.reactions = {};
 
-      const users = msg.reactions[emoji] || [];
+      const normalizedUser =
+        typeof user === "string" && user.startsWith("user:")
+          ? user
+          : `user:${user}`;
 
-      if (users.includes(user)) {
-        msg.reactions[emoji] = users.filter((u) => u !== user);
+      const prevEmoji = Object.keys(msg.reactions).find((e) =>
+        msg.reactions[e]?.includes(normalizedUser)
+      );
+
+      if (prevEmoji === emoji) {
+        msg.reactions[emoji] = msg.reactions[emoji].filter(
+          (u) => u !== normalizedUser
+        );
         if (msg.reactions[emoji].length === 0) {
           delete msg.reactions[emoji];
         }
-      } else {
-        msg.reactions[emoji] = [...users, user];
+        return;
       }
-    },
 
-    addReactionOptimistic(state, action) {
-      const { messageId, emoji, userId } = action.payload;
-      const msg = state.messages.find((m) => m.id === messageId);
-      if (!msg) return;
+      if (prevEmoji && prevEmoji !== emoji) {
+        msg.reactions[prevEmoji] = msg.reactions[prevEmoji].filter(
+          (u) => u !== normalizedUser
+        );
+        if (msg.reactions[prevEmoji].length === 0) {
+          delete msg.reactions[prevEmoji];
+        }
+      }
 
-      if (!msg.reactions) msg.reactions = {};
-      msg.reactions[userId] = emoji;
-    },
-
-    receiveReaction(state, action) {
-      const { messageId, emoji, userId } = action.payload;
-      const msg = state.messages.find((m) => m.id === messageId);
-      if (!msg) return;
-
-      if (!msg.reactions) msg.reactions = {};
-      msg.reactions[userId] = emoji;
+      msg.reactions[emoji] ??= [];
+      msg.reactions[emoji].push(normalizedUser);
     },
   },
 });
@@ -126,8 +129,6 @@ export const {
   removeMessage,
   recallMessage,
   toggleReaction,
-  addReactionOptimistic,
-  receiveReaction,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

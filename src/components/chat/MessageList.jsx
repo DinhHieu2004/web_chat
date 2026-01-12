@@ -12,6 +12,8 @@ export default function MessageList({
     callLogic,
     onDeleteForMe,
     onRecallMessage,
+    currentUser,
+    onToggleReaction,
 }) {
     const isRoom = activeChat?.type === "room";
 
@@ -35,6 +37,8 @@ export default function MessageList({
                         onRecall={(type) => type === 'video' ? callLogic.startVideoCall() : callLogic.startVoiceCall()}
                         onDeleteForMe={onDeleteForMe}
                         onRecallMessage={onRecallMessage}
+                        onToggleReaction={onToggleReaction}
+                        currentUser={currentUser ?? null}
                     />
                 </div>
             ))}

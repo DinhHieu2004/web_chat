@@ -63,33 +63,19 @@ export function useChatActions({
     }
   };
 
-  const handleToggleReaction = (message, emoji) => {
-    if (!message?.id || !emoji) return;
+  const handleToggleReaction = (message, unified) => {
+    if (!message?.id || !unified) return;
+
+    const messageChatKey = message.chatKey || chatKey;
 
     dispatch(
       toggleReaction({
-        chatKey,
+        chatKey: messageChatKey,
         messageId: message.id,
-        emoji,
+        emoji: unified,
         user: currentUser,
       })
     );
-  };
-
-  const sendReaction = ({ messageId, emoji }) => {
-    if (!activeChat?.id) return;
-
-    const payload = {
-      chatId: activeChat.id,
-      messageId,
-      emoji, 
-      userId: auth.user.id,
-      type: "reaction",
-    };
-    
-    dispatch(addReactionOptimistic(payload));
-
-    socket.emit("SEND_REACTION", payload);
   };
 
   const commonEmit = (payload, localData) => {
@@ -109,6 +95,7 @@ export function useChatActions({
         chatKey,
         message: {
           ...localData,
+          chatKey,
           id: `local-${now}`,
           actionTime: now,
           time: formatVNDateTime(now),
@@ -333,6 +320,5 @@ export function useChatActions({
     handleRecallLocal,
     handleUndoDeleteForMe,
     handleToggleReaction,
-    sendReaction,
   };
 }

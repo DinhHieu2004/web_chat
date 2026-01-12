@@ -1,8 +1,12 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { chatSocketServer } from "../services/socket";
-import { addMessage, setHistory } from "../redux/slices/chatSlice";
-import { setListUser, receiveReaction } from "../redux/slices/listUserSlice";
+import {
+  addMessage,
+  setHistory,
+  toggleReaction,
+} from "../redux/slices/chatSlice";
+import { setListUser } from "../redux/slices/listUserSlice";
 import {
   tryParseCustomPayload,
   makeChatKeyFromWs,
@@ -25,6 +29,21 @@ export function useChatSocket(currentUser, callLogic) {
       const rawText =
         typeof mes === "string" ? mes : mes?.mes || mes?.text || "";
       const parsed = tryParseCustomPayload(rawText);
+
+      if (parsed?.customType === "reaction") {
+        const { messageId, emoji, user } = parsed;
+        if (!messageId || !emoji || !user) return;
+
+        dispatch(
+          toggleReaction({
+            chatKey,
+            messageId,
+            emoji,
+            user,
+          })
+        );
+        return;
+      }
 
       const isCallLog =
         parsed?.customType === "call_log" || parsed?.type === "call_log";
@@ -71,6 +90,7 @@ export function useChatSocket(currentUser, callLogic) {
           chatKey,
           message: {
             id: msgId,
+            chatKey,
             text: isCallLog
               ? parsed.text || "Cuộc gọi"
               : parsed?.text || rawText || "[Tin nhắn]",
@@ -104,23 +124,6 @@ export function useChatSocket(currentUser, callLogic) {
           type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
           increaseUnread: !isActiveChat,
           noReorder: isActiveChat,
-        })
-      );
-    };
-
-    const onIncomingReaction = (payload) => {
-      const d = payload?.data || payload || {};
-      const { messageId, emoji, userId, chatId } = d;
-
-      if (!messageId || !emoji || !userId) return;
-
-      if (chatId !== activeChatId) return;
-
-      dispatch(
-        receiveReaction({
-          messageId,
-          emoji,
-          userId,
         })
       );
     };
@@ -210,11 +213,9 @@ export function useChatSocket(currentUser, callLogic) {
     chatSocketServer.on("SEND_CHAT", onIncoming);
     chatSocketServer.on("GET_ROOM_CHAT_MES", onHistory);
     chatSocketServer.on("GET_PEOPLE_CHAT_MES", onHistory);
-    chatSocketServer.on("SEND_REACTION", onIncomingReaction);
 
     return () => {
       chatSocketServer.off("SEND_CHAT", onIncoming);
-      chatSocketServer.off("SEND_REACTION", onIncomingReaction);
       chatSocketServer.off("GET_ROOM_CHAT_MES", onHistory);
       chatSocketServer.off("GET_PEOPLE_CHAT_MES", onHistory);
     };
