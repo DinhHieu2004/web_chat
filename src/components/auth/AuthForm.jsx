@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { loginUser, registerUser } from '../../redux/slices/authSlice';
-
 
 export default function AuthForm() {
     const [user, setUser] = useState('');
@@ -9,9 +9,18 @@ export default function AuthForm() {
     const [isLogin, setIsLogin] = useState(true);
 
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const status = useSelector((state) => state.auth.status);
     const error = useSelector((state) => state.auth.error);
+    const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
     const isLoading = status === 'loading';
+
+    // Điều hướng sau khi login thành công
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/chat/', { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
 
     const handleSubmit = (e) => {
         e.preventDefault();

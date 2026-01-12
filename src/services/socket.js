@@ -14,7 +14,6 @@ class ChatSocketServer {
         this.isAuthed = false;
         this.manualClose = false;
         
-        // Track pending auth requests
         this.pendingAuth = false;
     }
 
@@ -50,7 +49,6 @@ class ChatSocketServer {
             
             this.socket.onopen = () => {
                 console.log("WebSocket connected");
-                // Đợi một chút trước khi flush queue để server sẵn sàng
                 setTimeout(() => {
                     this.flushQueue();
                     if (this.isAuthed) this.startHeartbeat();
@@ -64,11 +62,9 @@ class ChatSocketServer {
                     const packet = JSON.parse(event.data);
                     console.log("received:", packet);
 
-                    // Handle AUTH errors - nhưng không xóa queue nếu đang có auth request pending
                     if (packet?.event === "AUTH" && packet?.status === "error") {
                         console.warn("[WS] AUTH error:", packet?.mes);
                         
-                        // Chỉ xử lý AUTH error nếu không có pending auth request
                         if (!this.pendingAuth) {
                             this.setAuthed(false);
                             const allowed = new Set(["LOGIN", "RE_LOGIN", "REGISTER"]);
@@ -143,7 +139,6 @@ class ChatSocketServer {
 
         pending.forEach((payload) => {
             try {
-                // Check if this is an auth request
                 const event = payload?.data?.event;
                 if (event === "LOGIN" || event === "RE_LOGIN" || event === "REGISTER") {
                     this.pendingAuth = true;
@@ -164,7 +159,6 @@ class ChatSocketServer {
 
         this.heartbeatInterval = setInterval(() => {
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                // this.send(HEARTBEAT_ACTION, {});
             } else {
                 this.stopHeartbeat();
             }
@@ -187,7 +181,6 @@ class ChatSocketServer {
             },
         };
 
-        // Track auth requests
         if (event === "LOGIN" || event === "RE_LOGIN" || event === "REGISTER") {
             this.pendingAuth = true;
             console.log(`[WS] Marking auth request pending: ${event}`);

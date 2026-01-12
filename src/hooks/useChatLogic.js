@@ -9,105 +9,105 @@ import { useCallLogic } from "./useCallLogic";
 import { useShareLocation } from "./useSendLocation";
 import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
 import {
-  makeChatKeyFromActive,
-  getPurePreview,
-  getMessagePreview,
+    makeChatKeyFromActive,
+    getPurePreview,
+    getMessagePreview,
 } from "../utils/chatDataFormatter";
 
 export default function useChatLogic({
-  activeChat,
-  setActiveChat,
-  currentUser,
-}) {
-  const dispatch = useDispatch();
-  const chatKey = makeChatKeyFromActive(activeChat);
-  const messages = useSelector(
-    chatKey ? selectMessagesByChatKey(chatKey) : () => []
-  );
-  const contacts = useSelector((state) => state?.listUser?.list || []);
-  const messagesEndRef = useRef(null);
-  const skipNextAutoScrollRef = useRef(false);
-
-  const ui = useChatState();
-  const callLogic = useCallLogic({ activeChat, currentUser, dispatch });
-  const search = useChatSearch(messages, chatKey);
-  const poll = usePollActions({ activeChat, chatKey, currentUser });
-  const location = useShareLocation({ activeChat, chatKey, currentUser });
-
-  const actions = useChatActions({
-    ...ui,
     activeChat,
-    chatKey,
+    setActiveChat,
     currentUser,
-    dispatch,
-  });
+}) {
+    const dispatch = useDispatch();
+    const chatKey = makeChatKeyFromActive(activeChat);
+    const messages = useSelector(
+        chatKey ? selectMessagesByChatKey(chatKey) : () => []
+    );
+    const contacts = useSelector((state) => state?.listUser?.list || []);
+    const messagesEndRef = useRef(null);
+    const skipNextAutoScrollRef = useRef(false);
 
-  
-  const { loadHistory } = useChatSocket(currentUser, callLogic);
+    const ui = useChatState();
+    const callLogic = useCallLogic({ activeChat, currentUser, dispatch });
+    const search = useChatSearch(messages, chatKey);
+    const poll = usePollActions({ activeChat, chatKey, currentUser });
+    const location = useShareLocation({ activeChat, chatKey, currentUser });
+
+    const actions = useChatActions({
+        ...ui,
+        activeChat,
+        chatKey,
+        currentUser,
+        dispatch,
+    });
 
 
-  useEffect(() => {
-    const prevLen = prevLenRef.current;
-    const nextLen = messages?.length || 0;
-    prevLenRef.current = nextLen;
+    const { loadHistory } = useChatSocket(currentUser, callLogic);
 
-    if (nextLen > prevLen) {
-      if (skipNextAutoScrollRef.current) {
-        skipNextAutoScrollRef.current = false;
-        return;
-      }
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
 
-  const prevLenRef = useRef(0);
+    useEffect(() => {
+        const prevLen = prevLenRef.current;
+        const nextLen = messages?.length || 0;
+        prevLenRef.current = nextLen;
 
-  return {
-    ...ui,
-    ...search,
-    activeChat,
-    messages,
-    messagesEndRef,
-    chatKey,
-    contacts,
-    callLogic,
-    getPurePreview,
-    getMessagePreview,
-    handlers: {
-      ...actions,
-      ...poll,
+        if (nextLen > prevLen) {
+            if (skipNextAutoScrollRef.current) {
+                skipNextAutoScrollRef.current = false;
+                return;
+            }
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages]);
 
-      handleSendLocation: location.sendLocation,
-      handleDeleteForMe: actions.handleDeleteForMe,
-      handleRecallMessage: actions.handleRecallLocal,
-      handleUndoDeleteForMe: actions.handleUndoDeleteForMe,
-      handleChatSelect: (contact) => {
-        setActiveChat(contact);
-        loadHistory(1, contact);
-        ui.setShowEmojiPicker(false);
-        ui.setShowStickerPicker(false);
-        ui.setShowGroupMenu(false);
-      },
-      markSkipNextAutoScroll: () => {
-        skipNextAutoScrollRef.current = true;
-      },
-      loadHistory,
-      startReply: (msg) => ui.setReplyMsg(msg),
-      clearReply: () => ui.setReplyMsg(null),
-      toggleSearchPanel: () => ui.setShowSearchPanel((v) => !v),
-      closeSearchPanel: () => ui.setShowSearchPanel(false),
-      startForward: (payload) => {
-        const msg = payload?.message || payload;
-        const preview = payload?.preview || getMessagePreview(msg);
-        ui.setForwardMsg(msg);
-        ui.setForwardPreview(preview);
-        ui.setShowForwardModal(true);
-      },
-      closeForward: () => ui.setShowForwardModal(false),
-      toggleEmojiPicker: () => ui.setShowEmojiPicker((v) => !v),
-      toggleStickerPicker: () => ui.setShowStickerPicker((v) => !v),
-      toggleGroupMenu: () => ui.setShowGroupMenu((v) => !v),
-      handleSend: () => actions.handleSend(ui.input),
-    },
-  };
+    const prevLenRef = useRef(0);
+
+    return {
+        ...ui,
+        ...search,
+        activeChat,
+        messages,
+        messagesEndRef,
+        chatKey,
+        contacts,
+        callLogic,
+        getPurePreview,
+        getMessagePreview,
+        handlers: {
+            ...actions,
+            ...poll,
+
+            handleSendLocation: location.sendLocation,
+            handleDeleteForMe: actions.handleDeleteForMe,
+            handleRecallMessage: actions.handleRecallLocal,
+            handleUndoDeleteForMe: actions.handleUndoDeleteForMe,
+            handleChatSelect: (contact) => {
+                setActiveChat(contact);
+                loadHistory(1, contact);
+                ui.setShowEmojiPicker(false);
+                ui.setShowStickerPicker(false);
+                ui.setShowGroupMenu(false);
+            },
+            markSkipNextAutoScroll: () => {
+                skipNextAutoScrollRef.current = true;
+            },
+            loadHistory,
+            startReply: (msg) => ui.setReplyMsg(msg),
+            clearReply: () => ui.setReplyMsg(null),
+            toggleSearchPanel: () => ui.setShowSearchPanel((v) => !v),
+            closeSearchPanel: () => ui.setShowSearchPanel(false),
+            startForward: (payload) => {
+                const msg = payload?.message || payload;
+                const preview = payload?.preview || getMessagePreview(msg);
+                ui.setForwardMsg(msg);
+                ui.setForwardPreview(preview);
+                ui.setShowForwardModal(true);
+            },
+            closeForward: () => ui.setShowForwardModal(false),
+            toggleEmojiPicker: () => ui.setShowEmojiPicker((v) => !v),
+            toggleStickerPicker: () => ui.setShowStickerPicker((v) => !v),
+            toggleGroupMenu: () => ui.setShowGroupMenu((v) => !v),
+            handleSend: () => actions.handleSend(ui.input),
+        },
+    };
 }
