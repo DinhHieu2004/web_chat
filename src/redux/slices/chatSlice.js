@@ -80,10 +80,10 @@ const chatSlice = createSlice({
       const messages = state.messagesMap?.[chatKey];
       if (!messages) return;
 
-      const msg = messages.find((m) => m.id === messageId);
+      const msg = messages.find((m) => String(m.id) === String(messageId));
       if (!msg) return;
 
-      if (!msg.reactions) msg.reactions = {};
+      msg.reactions ??= {};
 
       const normalizedUser =
         typeof user === "string" && user.startsWith("user:")
@@ -98,9 +98,7 @@ const chatSlice = createSlice({
         msg.reactions[emoji] = msg.reactions[emoji].filter(
           (u) => u !== normalizedUser
         );
-        if (msg.reactions[emoji].length === 0) {
-          delete msg.reactions[emoji];
-        }
+        if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
         return;
       }
 
@@ -108,9 +106,8 @@ const chatSlice = createSlice({
         msg.reactions[prevEmoji] = msg.reactions[prevEmoji].filter(
           (u) => u !== normalizedUser
         );
-        if (msg.reactions[prevEmoji].length === 0) {
+        if (msg.reactions[prevEmoji].length === 0)
           delete msg.reactions[prevEmoji];
-        }
       }
 
       msg.reactions[emoji] ??= [];

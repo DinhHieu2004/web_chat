@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { FaRegSmile } from "react-icons/fa";
 import { REACTION_EMOJIS, unifiedToEmoji } from "../../utils/emoji";
 
 export default function MessageReactionBar({
@@ -26,21 +27,10 @@ export default function MessageReactionBar({
 
   const displayUnified = currentUserReactionUnified || REACTION_EMOJIS[0];
 
-  console.log(
-    "[ReactionBar]",
-    message?.id,
-    currentUserReactionUnified,
-    reactions
-  );
-
-  if (!currentUser) {
-    return null;
-  }
-
   return (
     <div
       ref={ref}
-      className="relative inline-flex items-center"
+      className="relative inline-flex items-center pt-2"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
@@ -51,11 +41,17 @@ export default function MessageReactionBar({
           hover:text-gray-600
         `}
         onClick={() => {
-          onToggleReaction(message, displayUnified);
+          setOpen(true);
         }}
       >
         <span className="text-base leading-none">
-          {unifiedToEmoji(displayUnified)}
+          {currentUserReactionUnified ? (
+            unifiedToEmoji(displayUnified)
+          ) : (
+            <span className="relative top-[4px] inline-flex">
+              <FaRegSmile />
+            </span>
+          )}
         </span>
       </button>
 
@@ -81,7 +77,9 @@ export default function MessageReactionBar({
                   ${active ? "scale-125" : ""}
                 `}
                 onClick={() => {
-                  onToggleReaction(message, unified);
+                  if (currentUserKey) {
+                    onToggleReaction(message, unified);
+                  }
                   setOpen(false);
                 }}
               >

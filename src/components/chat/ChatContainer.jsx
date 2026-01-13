@@ -169,6 +169,7 @@ export default function ChatContainer({ toggleTheme }) {
             showGroupMenu={chat.showGroupMenu}
             callLogic={chat.callLogic}
             location={chat.location}
+            currentUser={user}
           />
           <ForwardMessageModal
             open={chat.showForwardModal}

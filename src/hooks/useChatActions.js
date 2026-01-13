@@ -64,16 +64,37 @@ export function useChatActions({
   };
 
   const handleToggleReaction = (message, unified) => {
-    if (!message?.id || !unified) return;
+    if (!message?.id || !unified || !activeChat || !currentUser) return;
 
     const messageChatKey = message.chatKey || chatKey;
+
+    const userKey =
+      typeof currentUser === "string"
+        ? currentUser.startsWith("user:")
+          ? currentUser
+          : `user:${currentUser}`
+        : `user:${currentUser.id}`;
 
     dispatch(
       toggleReaction({
         chatKey: messageChatKey,
         messageId: message.id,
         emoji: unified,
-        user: currentUser,
+        user: userKey,
+      })
+    );
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: JSON.stringify({
+          customType: "reaction",
+          messageId: message.id,
+          emoji: unified,
+          user: userKey,
+        }),
       })
     );
   };
