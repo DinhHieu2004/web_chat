@@ -9,6 +9,7 @@ import {
 import { FaVideo, FaPhone, FaPhoneSlash } from "react-icons/fa";
 import { FaEllipsisH, FaTrash, FaUndo } from "react-icons/fa";
 import LinkifyText from "./LinkifyText";
+import MessageReactionBar from "./MessageReactionBar";
 
 const decodeEmojiFromCpsJson = (raw) => {
   if (typeof raw !== "string") return "";
@@ -54,9 +55,16 @@ export default function MessageItem({
   onRecall,
   onDeleteForMe,
   onRecallMessage,
+  currentUser,
+  onToggleReaction,
 }) {
   const [openOpt, setOpenOpt] = useState(false);
   const optRef = useRef(null);
+
+  const currentUserId =
+    typeof currentUser === "object" && currentUser !== null
+      ? currentUser.id
+      : currentUser ?? null;
 
   useEffect(() => {
     const onDown = (e) => {
@@ -325,7 +333,7 @@ export default function MessageItem({
             typeof pvText === "string" &&
             pvText.trim() && (
               <p className="text-sm wrap-break-words whitespace-pre-wrap">
-                  <LinkifyText text={pvText} />
+                <LinkifyText text={pvText} />
               </p>
             )}
         </div>
@@ -554,7 +562,7 @@ export default function MessageItem({
                 finalUrl ? "mt-2" : ""
               }`}
             >
-                    <LinkifyText text={safeText} />
+              <LinkifyText text={safeText} />
             </p>
           )}
       </div>
@@ -639,7 +647,7 @@ export default function MessageItem({
 
                   {!preview?.url && replyPreviewText && (
                     <div className="opacity-80 truncate">
-                        <LinkifyText text={replyPreviewText} />
+                      <LinkifyText text={replyPreviewText} />
                     </div>
                   )}
                 </div>
@@ -648,6 +656,16 @@ export default function MessageItem({
 
           {renderContent()}
         </div>
+
+        {!isMe && (
+          <div className="absolute -bottom-2 right-2">
+            <MessageReactionBar
+              message={msg}
+              currentUser={currentUserId}
+              onToggleReaction={onToggleReaction}
+            />
+          </div>
+        )}
 
         <button
           onClick={() => onReply?.(msg)}

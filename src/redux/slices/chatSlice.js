@@ -73,6 +73,46 @@ const chatSlice = createSlice({
       );
       arr.splice(safeIndex, 0, newMessage);
     },
+
+    toggleReaction(state, action) {
+      const { chatKey, messageId, emoji, user } = action.payload;
+
+      const messages = state.messagesMap?.[chatKey];
+      if (!messages) return;
+
+      const msg = messages.find((m) => String(m.id) === String(messageId));
+      if (!msg) return;
+
+      msg.reactions ??= {};
+
+      const normalizedUser =
+        typeof user === "string" && user.startsWith("user:")
+          ? user
+          : `user:${user}`;
+
+      const prevEmoji = Object.keys(msg.reactions).find((e) =>
+        msg.reactions[e]?.includes(normalizedUser)
+      );
+
+      if (prevEmoji === emoji) {
+        msg.reactions[emoji] = msg.reactions[emoji].filter(
+          (u) => u !== normalizedUser
+        );
+        if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+        return;
+      }
+
+      if (prevEmoji && prevEmoji !== emoji) {
+        msg.reactions[prevEmoji] = msg.reactions[prevEmoji].filter(
+          (u) => u !== normalizedUser
+        );
+        if (msg.reactions[prevEmoji].length === 0)
+          delete msg.reactions[prevEmoji];
+      }
+
+      msg.reactions[emoji] ??= [];
+      msg.reactions[emoji].push(normalizedUser);
+    },
   },
 });
 
@@ -85,6 +125,7 @@ export const {
   setHistory,
   removeMessage,
   recallMessage,
+  toggleReaction,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

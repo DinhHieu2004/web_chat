@@ -28,6 +28,7 @@ export default function ChatArea({
   undoToast,
   onUndoDelete,
   onCloseUndoToast,
+  currentUser,
   ...rest
 }) {
 
@@ -59,6 +60,8 @@ export default function ChatArea({
         callLogic={handlers.callLogic}
         onDeleteForMe={onDeleteForMe}
         onRecallMessage={onRecallMessage}
+        onToggleReaction={handlers.handleToggleReaction}
+        currentUser={currentUser}
       />
       {showGroupMenu && isGroupChat && (
         <PollCreator

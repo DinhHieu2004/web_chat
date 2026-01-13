@@ -6,6 +6,7 @@ import {
   removeMessage,
   recallMessage,
   insertMessageAt,
+  toggleReaction,
 } from "../redux/slices/chatSlice";
 
 import { setListUser } from "../redux/slices/listUserSlice";
@@ -62,6 +63,42 @@ export function useChatActions({
     }
   };
 
+  const handleToggleReaction = (message, unified) => {
+    if (!message?.id || !unified || !activeChat || !currentUser) return;
+
+    const messageChatKey = message.chatKey || chatKey;
+
+    const userKey =
+      typeof currentUser === "string"
+        ? currentUser.startsWith("user:")
+          ? currentUser
+          : `user:${currentUser}`
+        : `user:${currentUser.id}`;
+
+    dispatch(
+      toggleReaction({
+        chatKey: messageChatKey,
+        messageId: message.id,
+        emoji: unified,
+        user: userKey,
+      })
+    );
+
+    chatSocketServer.send(
+      "SEND_CHAT",
+      makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: JSON.stringify({
+          customType: "reaction",
+          messageId: message.id,
+          emoji: unified,
+          user: userKey,
+        }),
+      })
+    );
+  };
+
   const commonEmit = (payload, localData) => {
     chatSocketServer.send(
       "SEND_CHAT",
@@ -79,6 +116,7 @@ export function useChatActions({
         chatKey,
         message: {
           ...localData,
+          chatKey,
           id: `local-${now}`,
           actionTime: now,
           time: formatVNDateTime(now),
@@ -298,8 +336,10 @@ export function useChatActions({
         sender: "user",
       });
     },
+
     handleDeleteForMe,
     handleRecallLocal,
     handleUndoDeleteForMe,
+    handleToggleReaction,
   };
 }
