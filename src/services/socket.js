@@ -13,12 +13,18 @@ class ChatSocketServer {
         this.queue = [];
         this.isAuthed = false;
         this.manualClose = false;
+        
+        this.pendingAuth = false;
     }
 
     setAuthed(v) {
         const next = !!v;
         const prev = this.isAuthed;
         this.isAuthed = next;
+        
+        if (next) {
+            this.pendingAuth = false;
+        }
 
         if (!this.isAuthed) {
             this.stopHeartbeat();
@@ -40,10 +46,13 @@ class ChatSocketServer {
         this.connPromise = new Promise((resolve) => {
             this.manualClose = false;
             this.socket = new WebSocket(SOCKET_URL);
+            
             this.socket.onopen = () => {
                 console.log("WebSocket connected");
-                this.flushQueue();
-                if (this.isAuthed) this.startHeartbeat();
+                setTimeout(() => {
+                    this.flushQueue();
+                    if (this.isAuthed) this.startHeartbeat();
+                }, 50);
                 this.connPromise = null;
                 resolve();
             };
@@ -55,10 +64,14 @@ class ChatSocketServer {
 
                     if (packet?.event === "AUTH" && packet?.status === "error") {
                         console.warn("[WS] AUTH error:", packet?.mes);
-                        this.setAuthed(false);
-
-                        const allowed = new Set(["LOGIN", "RE_LOGIN", "REGISTER"]);
-                        this.queue = this.queue.filter((p) => allowed.has(p?.data?.event));
+                        
+                        if (!this.pendingAuth) {
+                            this.setAuthed(false);
+                            const allowed = new Set(["LOGIN", "RE_LOGIN", "REGISTER"]);
+                            this.queue = this.queue.filter((p) => allowed.has(p?.data?.event));
+                        } else {
+                            console.log("[WS] AUTH error but auth request pending, ignoring");
+                        }
                         return;
                     }
 
@@ -92,7 +105,6 @@ class ChatSocketServer {
                 }
             };
 
-
             this.socket.onclose = (evt) => {
                 console.warn("WebSocket disconnected", {
                     code: evt.code,
@@ -103,6 +115,7 @@ class ChatSocketServer {
                 this.stopHeartbeat();
                 this.socket = null;
                 this.connPromise = null;
+                this.pendingAuth = false;
 
                 if (this.manualClose) return;
 
@@ -126,6 +139,12 @@ class ChatSocketServer {
 
         pending.forEach((payload) => {
             try {
+                const event = payload?.data?.event;
+                if (event === "LOGIN" || event === "RE_LOGIN" || event === "REGISTER") {
+                    this.pendingAuth = true;
+                    console.log(`[WS] Sending auth request: ${event}`);
+                }
+                
                 this.socket.send(JSON.stringify(payload));
             } catch (err) {
                 console.error("[WS] Flush queue failed:", err);
@@ -140,7 +159,6 @@ class ChatSocketServer {
 
         this.heartbeatInterval = setInterval(() => {
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                // this.send(HEARTBEAT_ACTION, {});
             } else {
                 this.stopHeartbeat();
             }
@@ -162,6 +180,11 @@ class ChatSocketServer {
                 data,
             },
         };
+
+        if (event === "LOGIN" || event === "RE_LOGIN" || event === "REGISTER") {
+            this.pendingAuth = true;
+            console.log(`[WS] Marking auth request pending: ${event}`);
+        }
 
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
             if (event !== HEARTBEAT_ACTION) {
@@ -202,6 +225,7 @@ class ChatSocketServer {
         this.manualClose = true;
         this.queue = [];
         this.connPromise = null;
+        this.pendingAuth = false;
 
         if (this.socket) {
             try {

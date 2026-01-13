@@ -2,6 +2,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../redux/slices/authSlice";
 import { setActiveChat } from "../../redux/slices/listUserSlice";
 import { useMemo, useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
 import ChatSearchPanel from "./ChatSearchPanel";
 import ForwardMessageModal from "./ForwardMessageModal";
@@ -9,33 +10,45 @@ import ForwardMessageModal from "./ForwardMessageModal";
 import Sidebar from "../sidebar/Sidebar";
 import ChatArea from "./ChatArea";
 import useChatLogic from "../../hooks/useChatLogic";
-import CallButtons from "./CallButtons";
 import IncomingCallModal from "./IncomingCallModal";
 import VideoCallScreen from "./VideoCallScreen";
 
 export default function ChatContainer({ toggleTheme }) {
   const dispatch = useDispatch();
-
-  // const { list, activeChatId } = useSelector((state) => state.listUser);
-  // const user = useSelector((state) => state.auth.user);
+  const navigate = useNavigate();
+  const { username } = useParams();
 
   const list = useSelector((state) => state.listUser.list);
-  const activeChatId = useSelector((state) => state.listUser.activeChatId);
   const user = useSelector((state) => state.auth.user);
+  const activeChatId = useSelector((state) => state.listUser.activeChatId);
 
-  // const activeChat = list.find((c) => c.name === activeChatId) || null;
+  useEffect(() => {
+    if (username) {
+      dispatch(setActiveChat(username));
+    }
+  }, [username, dispatch]);
+
   const activeChat = useMemo(() => {
-    return list.find((c) => c.name === activeChatId) || null;
-  }, [list, activeChatId]);
+    const found = list.find((c) => c.name === activeChatId);
+    if (found) return found;
+
+    if (username) return { name: username, type: "people" };
+    return null;
+  }, [list, activeChatId, username]);
 
   const chat = useChatLogic({
     activeChat,
-    setActiveChat: (contact) => dispatch(setActiveChat(contact.name)),
+    setActiveChat: (contact) => navigate(`/chat/${contact.name}`),
     currentUser: user,
   });
 
-  const [undoToast, setUndoToast] = useState(null);
+  useEffect(() => {
+    if (activeChat && chat.messages.length === 0) {
+      chat.handlers.loadHistory(1, activeChat);
+    }
+  }, [activeChat, chat.messages.length, chat.handlers]);
 
+  const [undoToast, setUndoToast] = useState(null);
   const undoTimerRef = useRef(null);
   const undoTickRef = useRef(null);
 
@@ -75,23 +88,15 @@ export default function ChatContainer({ toggleTheme }) {
     }, 5000);
   };
 
-  useEffect(() => {
-    return () => {
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-      if (undoTickRef.current) clearInterval(undoTickRef.current);
-    };
-  }, []);
-
   const handleUndoClick = () => {
     if (!undoToast?.msg) return;
 
-    // clear pending timeout
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     if (undoTickRef.current) clearInterval(undoTickRef.current);
     undoTimerRef.current = null;
     undoTickRef.current = null;
-    chat.handlers.markSkipNextAutoScroll?.();
 
+    chat.handlers.markSkipNextAutoScroll?.();
     chat.handlers.handleUndoDeleteForMe(
       undoToast.targetChatKey,
       undoToast.msg,
@@ -99,8 +104,19 @@ export default function ChatContainer({ toggleTheme }) {
     );
 
     setUndoToast({ status: "success" });
-
     setTimeout(() => setUndoToast(null), 1200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+      if (undoTickRef.current) clearInterval(undoTickRef.current);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/", { replace: true });
   };
 
   const isGroupChat = activeChat?.type === "room";
@@ -117,14 +133,13 @@ export default function ChatContainer({ toggleTheme }) {
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex justify-end p-2">
           <button
-            onClick={() => dispatch(logout())}
+            onClick={handleLogout}
             className="px-4 py-2 bg-red-500 text-white rounded"
           >
             Đăng xuất
           </button>
         </div>
 
-        {/* Call error banner */}
         {chat.callLogic.callError && (
           <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow z-50">
             <strong>Call error:</strong> {chat.callLogic.callError}
@@ -147,7 +162,6 @@ export default function ChatContainer({ toggleTheme }) {
             messages={chat.messages}
             input={chat.input}
             setInput={chat.setInput}
-            // handlers={chat.handlers}
             messagesEndRef={chat.messagesEndRef}
             replyMsg={chat.replyMsg}
             clearReply={chat.clearReply}
@@ -171,6 +185,7 @@ export default function ChatContainer({ toggleTheme }) {
             location={chat.location}
             currentUser={user}
           />
+
           <ForwardMessageModal
             open={chat.showForwardModal}
             onClose={chat.handlers.closeForward}
@@ -191,9 +206,7 @@ export default function ChatContainer({ toggleTheme }) {
             setQuery={chat.setMessageSearchQuery}
             results={chat.filteredResults}
             activeChatName={activeChat?.name}
-            onPickMessage={(id) => {
-              chat.scrollToMatchById(id);
-            }}
+            onPickMessage={(id) => chat.scrollToMatchById(id)}
             senderFilter={chat.senderFilter}
             setSenderFilter={chat.setSenderFilter}
             dateFilter={chat.dateFilter}
