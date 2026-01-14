@@ -3,15 +3,16 @@ import SidebarSearch from "./SidebarSearch";
 import ContactItem from "./ContactItem";
 import CreateRoomModal from "../room/CreateRoomModal";
 import JoinRoomModal from "../room/JoinRoomModal";
-import {setShowCreateModal, setShowJoinModal} from "../../redux/slices/listUserSlice";
+import AddFriendModal  from "../room/AddFriendModal";
+import {setShowCreateModal, setShowAddFriendModal} from "../../redux/slices/listUserSlice";
 import {useDispatch, useSelector} from "react-redux";
 import useSidebarLogic from "../../hooks/useSidebarLogic";
 import '../../assets/css/dark_light.css';
-import {FaSun, FaMoon} from "react-icons/fa";
+import {FaSun, FaMoon, FaUsers, FaUser, FaSignInAlt} from "react-icons/fa";
 
 export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, toggleTheme}) {
     const dispatch = useDispatch();
-    const {showJoinModal, showCreateModal} = useSelector(
+    const {showJoinModal, showCreateModal, showAddFriendModal} = useSelector(
         state => state.listUser
     );
 
@@ -38,22 +39,22 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
                 </div>
                 <SidebarSearch value={searchTerm} onChange={(v) => setSearchTerm(v)}/>
 
-                <div className="gap-2 mt-3">
-                    <button
-                        onClick={() => dispatch(setShowCreateModal(true))}
-                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
-                        + Tạo nhóm
-                    </button>
-                    <button onClick={() => dispatch(setShowJoinModal(true))}
-                            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
-                        + Tham gia
+                <div className="flex gap-2 mt-3">
+                    <button onClick={() => dispatch(setShowCreateModal(true))}
+                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg
+                   text-gray-700 text-lg p-2 m-2 flex items-center justify-center" title="Tạo nhóm">
+                        <span className="text-lg font-bold">+</span>
+                        <FaUsers />
                     </button>
 
-                    <button
-                        className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-sm font-medium p-2 m-2">
-                        + Thêm bạn
+                    <button onClick={() => dispatch(setShowAddFriendModal(true))}
+                            className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg
+                   text-gray-700 text-lg p-2 m-2 flex items-center justify-center" title="Thêm bạn">
+                        <span className="text-lg font-bold">+</span>
+                        <FaUser />
                     </button>
                 </div>
+
             </div>
             <div className="flex rounded-lg">
                 {[
@@ -87,6 +88,7 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
             </div>
             {showJoinModal && <JoinRoomModal/>}
             {showCreateModal && <CreateRoomModal/>}
+            {showAddFriendModal && <AddFriendModal />}
         </div>
     );
 }

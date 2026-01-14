@@ -6,12 +6,14 @@ export default function JoinRoomModal() {
     const dispatch = useDispatch();
     const { loading } = useSelector(state => state.listUser);
     const [roomName, setRoomName] = useState('');
+    const [error, setError] = useState('');
 
     const handleJoin = () => {
         if (!roomName.trim()) {
-            alert('Vui lòng nhập mã phòng');
+            setError('Vui lòng nhập tên phòng');
             return;
         }
+        setError('');
         dispatch(joinRoom({ name: roomName.trim() }));
     };
 
@@ -27,14 +29,23 @@ export default function JoinRoomModal() {
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-96 shadow-lg">
-                <h2 className="text-xl font-bold mb-4">Tham Gia Nhóm</h2>
+                <h2 className="text-xl font-bold mb-4">Tham Gia Phòng</h2>
 
-                <input type="text" placeholder="Mã phòng" value={roomName}
-                    onChange={e => setRoomName(e.target.value)}
-                    className="w-full border px-3 py-2 rounded mb-4"/>
+                <input type="text" placeholder="Tên phòng" value={roomName} onChange={e => {
+                        setRoomName(e.target.value);
+                        if (error) setError('');
+                    }}
+                    className={`w-full border px-3 py-2 rounded mb-1 ${
+                        error ? 'border-red-500' : ''
+                    }`}
+                />
+
+                {error && (
+                    <p className="text-red-500 text-sm mb-3">{error}</p>
+                )}
 
                 <div className="flex justify-between items-center">
-                    <button onClick={switchToCreate} className="text-blue-600 text-sm hover:underline">+ Tạo nhóm mới</button>
+                    <button onClick={switchToCreate} className="text-blue-600 text-sm hover:underline">+ Tạo phòng mới</button>
 
                     <div className="flex gap-3">
                         <button onClick={handleClose} className="px-4 py-2 bg-gray-200 rounded">Hủy</button>
