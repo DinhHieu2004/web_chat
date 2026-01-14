@@ -1,8 +1,8 @@
-import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { chatSocketServer } from "../services/socket";
-import { addMessage, setHistory, toggleReaction } from "../redux/slices/chatSlice";
-import { setListUser } from "../redux/slices/listUserSlice";
+import {useEffect} from "react";
+import {useDispatch, useSelector} from "react-redux";
+import {chatSocketServer} from "../services/socket";
+import {addMessage, setHistory, toggleReaction} from "../redux/slices/chatSlice";
+import {setListUser} from "../redux/slices/listUserSlice";
 import {
     tryParseCustomPayload,
     makeChatKeyFromWs,
@@ -55,30 +55,30 @@ export function useChatSocket(currentUser, callLogic) {
 
         const onIncoming = (payload) => {
             const d = payload?.data?.data || payload?.data || payload || {};
-            const { from: fromRaw, name, to, mes } = d;
+            const {from: fromRaw, name, to, mes, type: messageType} = d;
             const from = fromRaw || name;
 
             const rawText = typeof mes === "string" ? mes : mes?.mes || mes?.text || "";
             const parsed = tryParseCustomPayload(rawText);
 
             const chatKey = makeChatKeyFromWs({
-                type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
+                type: d.type === "ROOM_CHAT" || messageType === 1 ? "room" : "people",
                 from,
-                to,
+                to, name,
                 currentUser,
             });
 
             if (parsed?.customType === "reaction") {
-                const { messageId, emoji, user } = parsed;
+                const {messageId, emoji, user} = parsed;
                 if (!chatKey || !messageId || !emoji || !user) return;
-                dispatch(toggleReaction({ chatKey, messageId, emoji, user }));
+                dispatch(toggleReaction({chatKey, messageId, emoji, user}));
                 return;
             }
 
             const isCallLog = parsed?.customType === "call_log" || parsed?.type === "call_log";
 
             if (parsed?.customType === "call_request") {
-                if (from !== currentUser) callLogic.handleIncomingCall({ ...parsed, from });
+                if (from !== currentUser) callLogic.handleIncomingCall({...parsed, from});
                 return;
             }
             if (parsed?.customType === "call_accepted" || parsed?.customType === "call_rejected") {
@@ -95,6 +95,7 @@ export function useChatSocket(currentUser, callLogic) {
             const isActiveChat = chatKey.split(":")[1] === activeChatId;
             const actionTime = resolveActionTime(d);
             const msgId = resolveMessageId(d, actionTime);
+            const chatName = chatKey.split(":")[1];
 
             let displayText = "";
 
@@ -151,10 +152,11 @@ export function useChatSocket(currentUser, callLogic) {
 
             dispatch(
                 setListUser({
-                    name: chatKey.split(":")[1],
+                    name: chatName,
                     lastMessage: previewToText(rawText) || rawText,
                     actionTime,
-                    type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
+                    type: d.type === "ROOM_CHAT" || messageType === 1 ? "room" : "people",
+                    from: d.name,
                     increaseUnread: !isActiveChat,
                     noReorder: isActiveChat,
                 })
@@ -162,7 +164,7 @@ export function useChatSocket(currentUser, callLogic) {
         };
 
         const onHistory = (payload) => {
-            const { status, event, data } = payload || {};
+            const {status, event, data} = payload || {};
             if (status !== "success") return;
 
             const mapHistoryMessage = (m) => {
@@ -232,11 +234,11 @@ export function useChatSocket(currentUser, callLogic) {
                     if (mm) baseMessages.push(mm);
                 });
 
-                dispatch(setHistory({ chatKey: ck, messages: baseMessages }));
+                dispatch(setHistory({chatKey: ck, messages: baseMessages}));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;
-                    dispatch(toggleReaction({ chatKey: ck, ...ev }));
+                    dispatch(toggleReaction({chatKey: ck, ...ev}));
                 });
             }
 
@@ -264,11 +266,11 @@ export function useChatSocket(currentUser, callLogic) {
                     if (mm) baseMessages.push(mm);
                 });
 
-                dispatch(setHistory({ chatKey: ck, messages: baseMessages }));
+                dispatch(setHistory({chatKey: ck, messages: baseMessages}));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;
-                    dispatch(toggleReaction({ chatKey: ck, ...ev }));
+                    dispatch(toggleReaction({chatKey: ck, ...ev}));
                 });
             }
         };
@@ -289,7 +291,7 @@ export function useChatSocket(currentUser, callLogic) {
             if (!chat) return;
             chatSocketServer.send(
                 chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",
-                { name: chat.name, page }
+                {name: chat.name, page}
             );
         },
     };
