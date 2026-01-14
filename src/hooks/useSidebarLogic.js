@@ -94,7 +94,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
             const {type, name, to, mes} = d;
             if (!mes) return;
 
-            const key = type === "room" ? to : name === user ? to : name;
+            const key = type === 1 ? to : name === user ? to : name;
             if (!key) return;
 
             const preview = getSidebarPreview(mes);
@@ -103,8 +103,9 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
                 setListUser({
                     name: key,
                     lastMessage: preview,
+                    from: d.name,
                     actionTime: Date.now(),
-                    type: type === "room" ? "room" : "people",
+                    type: type === 1 ? "room" : "people",
                     noReorder: false
                 })
             );

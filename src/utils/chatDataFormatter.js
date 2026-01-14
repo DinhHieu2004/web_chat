@@ -349,6 +349,7 @@ export const previewToText = (msg) => {
     }
     if (type === "file") return fileName || "[File]";
     if (type === "richText" || type === "text") return text;
+    return text || "";
 };
 
 const safeStr = (v) => (typeof v === "string" ? v : "");
