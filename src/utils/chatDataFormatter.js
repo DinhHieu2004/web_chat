@@ -338,7 +338,9 @@ export const getPurePreview = (msg, messageMap) => {
 };
 
 export const previewToText = (msg) => {
-    const parsed = tryParseCustomPayload(msg);
+    const raw = typeof msg === "string" ? msg : msg?.mes;
+    const parsed = tryParseCustomPayload(raw);
+    if (!parsed) return typeof raw === "string" ? raw : "";
 
     const { type, text, fileName } = parsed;
 
@@ -346,7 +348,7 @@ export const previewToText = (msg) => {
         return `[${type.toUpperCase()}]`;
     }
     if (type === "file") return fileName || "[File]";
-    if (type === "richText") return text;
+    if (type === "richText" || type === "text") return text;
 };
 
 const safeStr = (v) => (typeof v === "string" ? v : "");
