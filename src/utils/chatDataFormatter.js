@@ -338,32 +338,17 @@ export const getPurePreview = (msg, messageMap) => {
 };
 
 export const previewToText = (msg) => {
-  const p = getMessagePreview(msg);
-  if (!p) return "";
+    const raw = typeof msg === "string" ? msg : msg?.mes;
+    const parsed = tryParseCustomPayload(raw);
+    if (!parsed) return typeof raw === "string" ? raw : "";
 
-  if (typeof p.text === "string" && p.text.trim()) return p.text;
-  if (typeof p.fileName === "string" && p.fileName.trim()) return p.fileName;
+    const { type, text, fileName } = parsed;
 
-  switch (p.type) {
-    case "image":
-      return "[Hình ảnh]";
-    case "gif":
-      return "[GIF]";
-    case "sticker":
-      return "[Sticker]";
-    case "video":
-      return "[Video]";
-    case "audio":
-      return "[Ghi âm]";
-    case "file":
-      return "[Tệp đính kèm]";
-    case "emoji":
-      return "[Emoji]";
-    case "richText":
-      return "[Văn bản]";
-    default:
-      return "[Tin nhắn]";
-  }
+    if (["image", "video", "gif", "sticker", "audio"].includes(type)) {
+        return `[${type.toUpperCase()}]`;
+    }
+    if (type === "file") return fileName || "[File]";
+    if (type === "richText" || type === "text") return text;
 };
 
 const safeStr = (v) => (typeof v === "string" ? v : "");
@@ -400,11 +385,8 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
   const previewType = p?.type || origin?.type || "text";
 
   const richBlocks =
-    previewType === "richText" && Array.isArray(origin?.blocks)
-      ? origin.blocks
-      : previewType === "richText" && Array.isArray(p?.blocks)
-      ? p.blocks
-      : [];
+    previewType === "richText" && Array.isArray(origin?.blocks) ? origin.blocks
+      : previewType === "richText" && Array.isArray(p?.blocks) ? p.blocks : [];
 
   let previewText = "";
   let previewCps = null;

@@ -6,7 +6,7 @@ import { setListUser } from "../redux/slices/listUserSlice";
 import {
   tryParseCustomPayload,
   makeChatKeyFromWs,
-  formatVNDateTime,
+  formatVNDateTime, previewToText
 } from "../utils/chatDataFormatter";
 
 export function useChatSocket(currentUser, callLogic) {
@@ -130,7 +130,7 @@ export function useChatSocket(currentUser, callLogic) {
       dispatch(
         setListUser({
           name: chatKey.split(":")[1],
-          lastMessage: parsed?.text || rawText,
+          lastMessage: previewToText(rawText) || rawText,
           actionTime,
           type: d.type === "ROOM_CHAT" || d.type === "room" ? "room" : "people",
           increaseUnread: !isActiveChat,
@@ -158,7 +158,7 @@ export function useChatSocket(currentUser, callLogic) {
         }
 
         const actionTime = resolveActionTime(m);
-        const msgId = resolveMessageId(m, actionTime || Date.now() + Math.random()); // ✅ IMPORTANT FIX
+        const msgId = resolveMessageId(m, actionTime || Date.now() + Math.random());
 
         const isCallLog = parsed?.customType === "call_log" || parsed?.type === "call_log";
 
@@ -186,6 +186,9 @@ export function useChatSocket(currentUser, callLogic) {
       };
 
       if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
+          if (data.length === 0) {
+              return;
+          }
         const otherUser = data[0]?.name === currentUser ? data[0]?.to : data[0]?.name;
         const ck = `user:${otherUser}`;
 
@@ -216,6 +219,9 @@ export function useChatSocket(currentUser, callLogic) {
       }
 
       if (event === "GET_ROOM_CHAT_MES" && Array.isArray(data?.chatData)) {
+          if (data.chatData.length === 0) {
+              return;
+          }
         const ck = `group:${data.name}`;
 
         const raw = data.chatData.slice().reverse();

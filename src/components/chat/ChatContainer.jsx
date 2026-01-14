@@ -21,6 +21,7 @@ export default function ChatContainer({ toggleTheme }) {
   const list = useSelector((state) => state.listUser.list);
   const user = useSelector((state) => state.auth.user);
   const activeChatId = useSelector((state) => state.listUser.activeChatId);
+    const requestedRef = useRef(false);
 
   useEffect(() => {
     if (username) {
@@ -41,12 +42,18 @@ export default function ChatContainer({ toggleTheme }) {
     setActiveChat: (contact) => navigate(`/chat/${contact.name}`),
     currentUser: user,
   });
+    useEffect(() => {
+        requestedRef.current = false;
+    }, [activeChat]);
 
-  useEffect(() => {
-    if (activeChat && chat.messages.length === 0) {
-      chat.handlers.loadHistory(1, activeChat);
-    }
-  }, [activeChat, chat.messages.length, chat.handlers]);
+    useEffect(() => {
+        if (!activeChat) return;
+
+        if (!requestedRef.current && chat.messages.length === 0) {
+            requestedRef.current = true;
+            chat.handlers.loadHistory(1, activeChat);
+        }
+    }, [activeChat, chat.messages.length, chat.handlers]);
 
   const [undoToast, setUndoToast] = useState(null);
   const undoTimerRef = useRef(null);

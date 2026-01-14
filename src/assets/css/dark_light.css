@@ -103,9 +103,9 @@
 [data-theme="dark"] input,
 [data-theme="dark"] textarea,
 [data-theme="dark"] [contenteditable] {
-    background-color: var(--bg-gray-100);   /* nền input */
-    color: var(--text-gray-800);            /* text */
-    border-color: var(--border-gray-200);   /* border */
+    background-color: var(--bg-gray-100);
+    color: var(--text-gray-800);
+    border-color: var(--border-gray-200);
 }
 
 /* placeholder */

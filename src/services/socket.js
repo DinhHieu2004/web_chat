@@ -76,10 +76,20 @@ class ChatSocketServer {
                     }
 
                     if (packet?.event === "SEND_CHAT") {
+                        const parseIfJson = (v) => {
+                            if (typeof v !== "string") return null;
+                            const s = v.trim();
+                            if (!s.startsWith("{")) return null;
+                            try {
+                                return JSON.parse(s);
+                            } catch {
+                                return null;
+                            }
+                        };
                         const msg = packet.data;
-                        const mesObj = JSON.parse(msg.mes || "{}");
+                        const mesObj = parseIfJson(msg.mes);
 
-                        if (mesObj.customType === "typing") {
+                        if (mesObj?.customType === "typing") {
                             if (this.listeners["TYPING"]) {
                                 this.listeners["TYPING"].forEach(cb =>
                                     cb({
@@ -208,16 +218,14 @@ class ChatSocketServer {
 
     on(event, callback) {
         if (!this.listeners[event]) {
-            this.listeners[event] = [];
+            this.listeners[event] = new Set();
         }
-        this.listeners[event].push(callback);
+        this.listeners[event].add(callback);
     }
 
     off(event, callback) {
         if (!this.listeners[event]) return;
-        this.listeners[event] = this.listeners[event].filter(
-            (cb) => cb !== callback
-        );
+        this.listeners[event].delete(callback);
     }
 
     close() {

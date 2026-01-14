@@ -69,17 +69,13 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
 
             return "Đã chuyển tiếp";
         }
-        const {type, text} = parsed;
+        const { type, text, fileName } = parsed;
 
-        if (type === "image") return "Đã gửi một ảnh";
-        if (type === "video") return "Đã gửi một video";
-        if (type === "gif") return "Đã gửi một GIF";
-        if (type === "sticker") return "Đã gửi một sticker";
-        if (type === "file") return "Đã gửi một tệp";
-        if (type === "emoji") return text;
-        if (type === "richText") return text || "";
-
-        return text || "";
+        if (["image", "video", "gif", "sticker", "audio"].includes(type)) {
+            return `[${type.toUpperCase()}]`;
+        }
+        if (type === "file") return fileName || "[File]";
+        if (type === "richText") return text;
     };
     useEffect(() => {
         if (bootedRef.current) return;

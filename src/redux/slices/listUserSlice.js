@@ -49,6 +49,16 @@ export const joinRoom = createAsyncThunk(
         }
     }
 );
+export const chatFriend = createAsyncThunk(
+    "chat/chatFriend",
+    async ({user}, {rejectWithValue}) => {
+        try {
+            return await createSocketPromise("CHECK_USER_EXIST", {user});
+        } catch (err) {
+            return rejectWithValue(err || "Not exist");
+        }
+    }
+);
 
 const listUserSlice = createSlice({
     name: "user",
@@ -59,6 +69,7 @@ const listUserSlice = createSlice({
         error: null,
         showCreateModal: false,
         showJoinModal: false,
+        showAddFriendModal: false,
     },
     reducers: {
         setShowCreateModal: (state, action) => {
@@ -66,6 +77,9 @@ const listUserSlice = createSlice({
         },
         setShowJoinModal: (state, action) => {
             state.showJoinModal = action.payload;
+        },
+        setShowAddFriendModal: (state, action) => {
+            state.showAddFriendModal = action.payload;
         },
         setActiveChat: (state, action) => {
             state.activeChatId = action.payload;
@@ -170,9 +184,36 @@ const listUserSlice = createSlice({
             .addCase(joinRoom.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
+            })
+            .addCase(chatFriend.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(chatFriend.fulfilled, (state, action) => {
+                state.loading = false;
+                const username =
+                    action.payload?.user ||
+                    action.meta?.arg?.user;
+                const people = {
+                    name: username,
+                    type: "people",
+                    online: !!action.payload.online,
+                    unreadCount: 0,
+                    lastMessage: "",
+                };
+
+                if (!state.list.find(u => u.name === people.name)) {
+                    state.list.unshift(people);
+                }
+                state.activeChatId = people.name;
+                state.showAddFriendModal = false;
+            })
+            .addCase(chatFriend.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload || "User không tồn tại";
             });
     },
 });
 
-export const {setShowCreateModal, setListUser, setShowJoinModal, setActiveChat, setUserOnlineStatus} = listUserSlice.actions;
+export const {setShowCreateModal, setListUser, setShowJoinModal, setActiveChat, setUserOnlineStatus, setShowAddFriendModal} = listUserSlice.actions;
 export default listUserSlice.reducer;
