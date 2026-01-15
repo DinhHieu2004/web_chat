@@ -1,15 +1,14 @@
+import { chatSocketServer } from "./socket";
+import { makeOutgoingPayload, buildPollMessage, buildPollVote } from "../utils/chatDataFormatter";
 
-import { chatSocketServer} from "./socket";
-import { makeOutgoingPayload } from "../utils/chatDataFormatter";
-import { buildPollMessage, buildPollVote } from "../utils/chatDataFormatter";
+export const sendPoll = ({ activeChat, question, options }) => {
+    if (!activeChat) return;
 
-export const sendPoll = ({activeChat, question, options}) => {
-    if(!activeChat) return;
+    const pollData = buildPollMessage(question, options);
+    if (!pollData) return;
 
-    const m = buildPollMessage(question, options);
-    if(!m) return ;
+    const mes = JSON.stringify(pollData);
 
-    const mes = JSON.stringify(m);
     chatSocketServer.send(
         "SEND_CHAT",
         makeOutgoingPayload({
@@ -20,21 +19,30 @@ export const sendPoll = ({activeChat, question, options}) => {
     );
 
     return mes;
-
 };
 
-export const sendPollVote = ({ activeChat, pollId, optionId, userId }) => {
-    if (!activeChat) return;
+export const sendPollVote = ({ activeChat, pollId, optionId, userId, action = "add" }) => {
+    if (!activeChat || !pollId || !optionId || !userId) {
+        return;
+    }
 
-    const mes = buildPollVote(pollId, optionId, userId);
-    if (!mes) return;
+    const votePayload = {
+        customType: "poll_vote",
+        pollId: String(pollId),
+        optionId: String(optionId),
+        userId: String(userId),
+        action: action || "add"
+    };
 
-    chatSocketServer.send(
-        "SEND_CHAT",
-        makeOutgoingPayload({
-            type: activeChat.type,
-            to: activeChat.name,
-            mes: JSON.stringify(mes),
-        })
-    );
+    const mesString = JSON.stringify(votePayload);
+
+    const outgoing = makeOutgoingPayload({
+        type: activeChat.type,
+        to: activeChat.name,
+        mes: mesString,
+    });
+
+    chatSocketServer.send("SEND_CHAT", outgoing);
+
+    return votePayload;
 };
