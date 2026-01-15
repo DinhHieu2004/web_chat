@@ -1,8 +1,8 @@
-import {useEffect} from "react";
-import {useDispatch, useSelector} from "react-redux";
-import {chatSocketServer} from "../services/socket";
-import {addMessage, setHistory, toggleReaction} from "../redux/slices/chatSlice";
-import {setListUser} from "../redux/slices/listUserSlice";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { chatSocketServer } from "../services/socket";
+import { addMessage, setHistory, toggleReaction, updatePollVote } from "../redux/slices/chatSlice";
+import { setListUser } from "../redux/slices/listUserSlice";
 import {
     tryParseCustomPayload,
     makeChatKeyFromWs,
@@ -54,8 +54,9 @@ export function useChatSocket(currentUser, callLogic) {
         };
 
         const onIncoming = (payload) => {
+
             const d = payload?.data?.data || payload?.data || payload || {};
-            const {from: fromRaw, name, to, mes, type: messageType} = d;
+            const { from: fromRaw, name, to, mes, type: messageType } = d;
             const from = fromRaw || name;
 
             const rawText = typeof mes === "string" ? mes : mes?.mes || mes?.text || "";
@@ -68,17 +69,48 @@ export function useChatSocket(currentUser, callLogic) {
                 currentUser,
             });
 
+
+            if (parsed?.customType === "poll_vote") {
+
+                const pollId = parsed.pollId || parsed.poll?.id || parsed.id;
+                const optionId = parsed.optionId || parsed.poll?.optionId;
+                const voteAction = parsed.action || "add";
+                const voteUserId = parsed.userId || from;
+
+                let voteChatKey = chatKey;
+                if (d.type === "ROOM_CHAT" || messageType === 1) {
+                    voteChatKey = `group:${to}`;
+                }
+
+
+                if (voteChatKey && pollId && optionId) {
+                    dispatch(
+                        updatePollVote({
+                            chatKey: voteChatKey,
+                            pollId,
+                            optionId,
+                            userId: voteUserId,
+                            action: voteAction,
+                        })
+                    );
+                } else {
+                    console.error("Thiếu thông tin vote:", { voteChatKey, pollId, optionId });
+                }
+                return;
+            }
+
             if (parsed?.customType === "reaction") {
-                const {messageId, emoji, user} = parsed;
-                if (!chatKey || !messageId || !emoji || !user) return;
-                dispatch(toggleReaction({chatKey, messageId, emoji, user}));
+                const { messageId, emoji, user } = parsed;
+                if (chatKey && messageId && emoji && user) {
+                    dispatch(toggleReaction({ chatKey, messageId, emoji, user }));
+                }
                 return;
             }
 
             const isCallLog = parsed?.customType === "call_log" || parsed?.type === "call_log";
 
             if (parsed?.customType === "call_request") {
-                if (from !== currentUser) callLogic.handleIncomingCall({...parsed, from});
+                if (from !== currentUser) callLogic.handleIncomingCall({ ...parsed, from });
                 return;
             }
             if (parsed?.customType === "call_accepted" || parsed?.customType === "call_rejected") {
@@ -92,6 +124,7 @@ export function useChatSocket(currentUser, callLogic) {
 
             if (!chatKey) return;
 
+            const isPoll = parsed?.customType === "poll";
             const isActiveChat = chatKey.split(":")[1] === activeChatId;
             const actionTime = resolveActionTime(d);
             const msgId = resolveMessageId(d, actionTime);
@@ -99,7 +132,10 @@ export function useChatSocket(currentUser, callLogic) {
 
             let displayText = "";
 
-            if (isCallLog) {
+            if (isPoll) {
+                displayText = parsed?.poll?.question || parsed?.question || "Biểu quyết";
+
+            } else if (isCallLog) {
                 displayText = parsed?.text || "Cuộc gọi";
             } else if (parsed?.type === "emoji") {
                 if (Array.isArray(parsed?.cps)) {
@@ -118,7 +154,7 @@ export function useChatSocket(currentUser, callLogic) {
             } else if (parsed?.type === "forward") {
                 displayText = parsed?.meta?.forward?.note || "";
             } else {
-                displayText = parsed?.text || "";
+                displayText = parsed?.text || (typeof mes === "string" ? mes : "");
             }
 
             dispatch(
@@ -136,7 +172,8 @@ export function useChatSocket(currentUser, callLogic) {
                                 : "other",
                         actionTime,
                         time: formatVNDateTime(actionTime),
-                        type: isCallLog ? "call_log" : parsed?.type || "text",
+                        type: isPoll ? "poll" : (isCallLog ? "call_log" : (parsed?.type || "text")),
+                        poll: isPoll ? (parsed?.poll || parsed) : null,
                         from,
                         to,
                         url: parsed?.url || null,
@@ -161,10 +198,14 @@ export function useChatSocket(currentUser, callLogic) {
                     noReorder: isActiveChat,
                 })
             );
+
+
+
+
         };
 
         const onHistory = (payload) => {
-            const {status, event, data} = payload || {};
+            const { status, event, data } = payload || {};
             if (status !== "success") return;
 
             const mapHistoryMessage = (m) => {
@@ -185,6 +226,24 @@ export function useChatSocket(currentUser, callLogic) {
                 const msgId = resolveMessageId(m, actionTime || Date.now() + Math.random());
 
                 const isCallLog = parsed?.customType === "call_log" || parsed?.type === "call_log";
+
+                if (parsed?.customType === "poll") {
+                    return {
+                        id: msgId,
+                        text: parsed?.question || "Cuộc thăm dò ý kiến",
+                        sender: String(m?.name).toLowerCase() === String(currentUser).toLowerCase()
+                            ? "user"
+                            : "other",
+                        actionTime,
+                        time: formatVNDateTime(m?.createAt || actionTime || Date.now()),
+                        type: "poll",
+                        from: m?.name,
+                        to: m?.to,
+                        poll: parsed.poll || parsed,
+                        rawMes: typeof m?.mes === "string" ? m.mes : "",
+                        mes: typeof m?.mes === "string" ? m.mes : "",
+                    };
+                }
 
                 return {
                     id: msgId,
@@ -234,11 +293,11 @@ export function useChatSocket(currentUser, callLogic) {
                     if (mm) baseMessages.push(mm);
                 });
 
-                dispatch(setHistory({chatKey: ck, messages: baseMessages}));
+                dispatch(setHistory({ chatKey: ck, messages: baseMessages }));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;
-                    dispatch(toggleReaction({chatKey: ck, ...ev}));
+                    dispatch(toggleReaction({ chatKey: ck, ...ev }));
                 });
             }
 
@@ -266,11 +325,11 @@ export function useChatSocket(currentUser, callLogic) {
                     if (mm) baseMessages.push(mm);
                 });
 
-                dispatch(setHistory({chatKey: ck, messages: baseMessages}));
+                dispatch(setHistory({ chatKey: ck, messages: baseMessages }));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;
-                    dispatch(toggleReaction({chatKey: ck, ...ev}));
+                    dispatch(toggleReaction({ chatKey: ck, ...ev }));
                 });
             }
         };
@@ -291,7 +350,7 @@ export function useChatSocket(currentUser, callLogic) {
             if (!chat) return;
             chatSocketServer.send(
                 chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",
-                {name: chat.name, page}
+                { name: chat.name, page }
             );
         },
     };
