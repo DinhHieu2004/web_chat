@@ -1,13 +1,10 @@
 import { useDispatch } from "react-redux";
 import { sendPoll, sendPollVote } from "../services/pollSender";
-import { addMessage } from "../redux/slices/chatSlice";
+import { addMessage, updatePollVote } from "../redux/slices/chatSlice";
 import { formatVNDateTime } from "../utils/chatDataFormatter";
+import { setListUser } from "../redux/slices/listUserSlice";
 
-export function usePollActions({
-    activeChat,
-    chatKey,
-    currentUser,
-}) {
+export function usePollActions({ activeChat, chatKey, currentUser }) {
     const dispatch = useDispatch();
 
     const handleSendPoll = (question, options) => {
@@ -16,34 +13,58 @@ export function usePollActions({
         const mes = sendPoll({ activeChat, question, options });
         if (!mes) return;
 
-        // sendPoll returns the stringified message; parse payload for optimistic UI
         let pollPayload = null;
         try {
-            const parsed = JSON.parse(mes);
-            pollPayload = parsed?.payload || null;
+            pollPayload = JSON.parse(mes);
         } catch (e) {
-            pollPayload = null;
+            console.error("Parse poll error:", e);
+            return;
         }
+
+        const now = Date.now();
 
         dispatch(
             addMessage({
                 chatKey,
                 message: {
-                    id: `local-${Date.now()}`,
+                    id: `local-${now}`,
+                    chatKey,
                     type: "poll",
                     sender: "user",
-                    time: formatVNDateTime(),
+                    actionTime: now,
+                    time: formatVNDateTime(now),
                     from: currentUser,
                     to: activeChat.name,
-                    poll: pollPayload || mes,
+                    poll: pollPayload,
+                    rawMes: mes,
+                    mes: mes,
                     optimistic: true,
                 },
+            })
+        );
+
+        dispatch(
+            setListUser({
+                name: activeChat.name,
+                lastMessage: `📊 ${pollPayload.question}`,
+                actionTime: now,
+                type: activeChat.type,
             })
         );
     };
 
     const handleSendPollVote = (pollId, optionId) => {
-        if (!activeChat) return;
+        if (!activeChat || !currentUser || !pollId || !optionId) return;
+
+        dispatch(
+            updatePollVote({
+                chatKey,
+                pollId,
+                optionId,
+                userId: currentUser,
+                action: "add",
+            })
+        );
 
         sendPollVote({
             activeChat,
@@ -53,8 +74,24 @@ export function usePollActions({
         });
     };
 
+    const handleRemovePollVote = (pollId, optionId) => {
+        if (!activeChat || !currentUser || !pollId || !optionId) return;
+
+        dispatch(
+            updatePollVote({
+                chatKey,
+                pollId,
+                optionId,
+                userId: currentUser,
+                action: "remove",
+            })
+        );
+
+    };
+
     return {
         handleSendPoll,
         handleSendPollVote,
+        handleRemovePollVote,
     };
 }
