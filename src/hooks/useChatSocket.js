@@ -131,7 +131,6 @@ export function useChatSocket(currentUser, callLogic) {
             const chatName = chatKey.split(":")[1];
 
             let displayText = "";
-
             if (isPoll) {
                 displayText = parsed?.poll?.question || parsed?.question || "Biểu quyết";
 
@@ -269,9 +268,6 @@ export function useChatSocket(currentUser, callLogic) {
             };
 
             if (event === "GET_PEOPLE_CHAT_MES" && Array.isArray(data)) {
-                if (data.length === 0) {
-                    return;
-                }
                 const otherUser = data[0]?.name === currentUser ? data[0]?.to : data[0]?.name;
                 const ck = `user:${otherUser}`;
 
@@ -293,7 +289,9 @@ export function useChatSocket(currentUser, callLogic) {
                     if (mm) baseMessages.push(mm);
                 });
 
-                dispatch(setHistory({ chatKey: ck, messages: baseMessages }));
+                const page = payload?.page;
+                dispatch(setHistory({chatKey: ck, messages: baseMessages, page,
+                    hasMore: Array.isArray(data) && data.length > 0,}));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;
@@ -302,9 +300,6 @@ export function useChatSocket(currentUser, callLogic) {
             }
 
             if (event === "GET_ROOM_CHAT_MES" && Array.isArray(data?.chatData)) {
-                if (data.chatData.length === 0) {
-                    return;
-                }
                 const ck = `group:${data.name}`;
 
                 const raw = data.chatData.slice().reverse();
@@ -324,8 +319,9 @@ export function useChatSocket(currentUser, callLogic) {
                     const mm = mapHistoryMessage(m);
                     if (mm) baseMessages.push(mm);
                 });
-
-                dispatch(setHistory({ chatKey: ck, messages: baseMessages }));
+                const page = payload?.page;
+                dispatch(setHistory({chatKey: ck, messages: baseMessages, page,
+                    hasMore: Array.isArray(data.chatData) && data.chatData.length > 0,}));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;
@@ -346,7 +342,7 @@ export function useChatSocket(currentUser, callLogic) {
     }, [currentUser, callLogic, dispatch, activeChatId]);
 
     return {
-        loadHistory: (page = 1, chat) => {
+        loadHistory: (page, chat) => {
             if (!chat) return;
             chatSocketServer.send(
                 chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",

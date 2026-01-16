@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import MessageItem from "./MessageItem";
 
 export default function MessageList({
@@ -14,11 +14,94 @@ export default function MessageList({
     onRecallMessage,
     currentUser,
     onToggleReaction,
+    onLoadMore,
+    hasMore,
 }) {
     const isRoom = activeChat?.type === "room";
+    const containerRef = useRef(null);
+    const topSentinelRef = useRef(null);
+    const loadingRef = useRef(false);
+
+    const userScrolledRef = useRef(false);
+    const prevHeightRef = useRef(0);
+    const firstLoadRef = useRef(true);
+    const autoFillRef = useRef(false);
+
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+
+        const onScroll = () => {
+            if (el.scrollTop < el.scrollHeight - el.clientHeight - 20) {
+                userScrolledRef.current = true;
+            }
+        };
+
+        el.addEventListener("scroll", onScroll);
+        return () => el.removeEventListener("scroll", onScroll);
+    }, []);
+    useEffect(() => {
+        loadingRef.current = false;
+        prevHeightRef.current = 0;
+        firstLoadRef.current = true;
+        autoFillRef.current = false;
+    }, [activeChat]);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        const sentinel = topSentinelRef.current;
+        if (!container || !sentinel || !hasMore) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (!entry.isIntersecting) return;
+                if (loadingRef.current) return;
+                if (!userScrolledRef.current) return;
+                if (!hasMore) return;
+
+                prevHeightRef.current = container.scrollHeight;
+                loadingRef.current = true;
+
+                onLoadMore?.();
+            },
+            {
+                root: container,
+                threshold: 0,
+                rootMargin: "0px",
+            }
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [activeChat, hasMore, onLoadMore]);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container || messages.length === 0) return;
+
+        if (firstLoadRef.current) {
+            container.scrollTop = container.scrollHeight;
+            firstLoadRef.current = false;
+            return;
+        }
+        if (autoFillRef.current) {
+            autoFillRef.current = false;
+            loadingRef.current = false;
+            return;
+        }
+
+        if (loadingRef.current) {
+            const newHeight = container.scrollHeight;
+            const diff = newHeight - prevHeightRef.current;
+            container.scrollTop += diff;
+            loadingRef.current = false;
+        }
+
+    }, [messages]);
 
     return (
-        <div className="flex-1 bg-gray-100 min-h-0 overflow-y-auto px-6 py-4 space-y-4 from-purple-50 to-blue-50">
+        <div ref={containerRef} className="flex-1 bg-gray-100 min-h-0 overflow-y-auto px-6 py-4 space-y-4 from-purple-50 to-blue-50">
+            {hasMore && <div ref={topSentinelRef} className="h-2" />}
             {messages.map((m) => (
                 <div
                     key={m.id}

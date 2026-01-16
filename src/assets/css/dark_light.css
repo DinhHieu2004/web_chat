@@ -96,7 +96,9 @@
     display: block;
     color: #a5b4fc;
 }
-
+ [data-theme="dark"] .text-tittle {
+     color: var(--text-gray-500);
+ }
 
 /* phần chatinput*/
 [data-theme="dark"] .chat-input-wrapper,

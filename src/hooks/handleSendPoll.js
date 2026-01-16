@@ -46,7 +46,7 @@ export function usePollActions({ activeChat, chatKey, currentUser }) {
         dispatch(
             setListUser({
                 name: activeChat.name,
-                lastMessage: `📊 ${pollPayload.question}`,
+                lastMessage: `${pollPayload.question}`,
                 actionTime: now,
                 type: activeChat.type,
             })
