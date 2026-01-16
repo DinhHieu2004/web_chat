@@ -29,7 +29,7 @@ export default function useChatLogic({
     const skipNextAutoScrollRef = useRef(false);
     const prevLenRef = useRef(0);
     const requestedRef = useRef(false);
-    const pageRef = useRef(1);
+    const pageRef = useRef(0);
 
     const ui = useChatState();
     const callLogic = useCallLogic({ activeChat, currentUser, dispatch });
@@ -61,7 +61,6 @@ export default function useChatLogic({
     };
 
     useEffect(() => {
-        pageRef.current = 1;
         prevLenRef.current = 0;
         requestedRef.current = false;
         skipNextAutoScrollRef.current = false;

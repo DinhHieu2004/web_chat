@@ -36,7 +36,7 @@ export default function AuthForm() {
     return (
         <div className="flex justify-center items-center h-screen bg-gray-200">
             <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
-                <h2 className="text-2xl font-bold mb-6 text-center">
+                <h2 className="text-2xl font-bold mb-6 text-center text-tittle">
                     {isLogin ? 'Đăng Nhập' : 'Đăng Ký'}
                 </h2>
                 {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}

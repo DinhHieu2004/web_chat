@@ -215,10 +215,10 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     }, [list, searchTerm, activeTab]);
 
     const handleSelect = (item) => {
+        dispatch(setActiveChat(item.name));
         const nextChatKey = makeChatKeyFromActive(item);
 
         dispatch(resetMessages(nextChatKey));
-        dispatch(setActiveChat(item.name));
         dispatch(
             setListUser({
                 name: item.name,

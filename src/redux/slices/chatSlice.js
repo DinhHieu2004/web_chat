@@ -8,7 +8,7 @@ const ensureChat = (state, chatKey) => {
     if (!state.messagesMap[chatKey]) {
         state.messagesMap[chatKey] = {
             messages: [],
-            page: 1,
+            page: 0,
             hasMore: true,
         };
     }
@@ -39,7 +39,6 @@ const chatSlice = createSlice({
         resetMessages(state, action) {
             const chatKey = action.payload;
             state.messagesMap[chatKey] = {
-                ...(state.messagesMap[chatKey] ?? {}),
                 messages: [],
                 page: 0,
                 hasMore: true,
@@ -49,13 +48,12 @@ const chatSlice = createSlice({
             const { chatKey, messages, page } = action.payload;
             ensureChat(state, chatKey);
             const chat = state.messagesMap[chatKey];
-            if (page <= chat.page) return;
+            if (page < chat.page) return;
 
             const incoming = Array.isArray(messages) ? messages : [];
 
             if (incoming.length === 0) {
                 chat.hasMore = false;
-                chat.page = page;
                 return;
             }
 
@@ -64,14 +62,12 @@ const chatSlice = createSlice({
                 m => m?.id && !existingIds.has(String(m.id))
             );
             const sorted = uniqueIncoming.sort(
-                (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+                (a, b) => a.actionTime - b.actionTime
             );
             if (page === 1) {
                 chat.messages = sorted;
             } else {
-                chat.messages = [...sorted, ...chat.messages].sort(
-                    (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-                );
+                chat.messages = [...sorted, ...chat.messages];
             }
 
             chat.page = page;

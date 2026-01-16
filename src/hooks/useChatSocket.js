@@ -290,7 +290,8 @@ export function useChatSocket(currentUser, callLogic) {
                 });
 
                 const page = payload?.page;
-                dispatch(setHistory({chatKey: ck, messages: baseMessages, page, hasMore: baseMessages.length > 0,}));
+                dispatch(setHistory({chatKey: ck, messages: baseMessages, page,
+                    hasMore: Array.isArray(data) && data.length > 0,}));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;
@@ -319,7 +320,8 @@ export function useChatSocket(currentUser, callLogic) {
                     if (mm) baseMessages.push(mm);
                 });
                 const page = payload?.page;
-                dispatch(setHistory({chatKey: ck, messages: baseMessages, page, hasMore: baseMessages.length > 0,}));
+                dispatch(setHistory({chatKey: ck, messages: baseMessages, page,
+                    hasMore: Array.isArray(data.chatData) && data.chatData.length > 0,}));
 
                 reactionEvents.forEach((ev) => {
                     if (!ev.messageId || !ev.emoji || !ev.user) return;

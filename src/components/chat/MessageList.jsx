@@ -25,6 +25,7 @@ export default function MessageList({
     const userScrolledRef = useRef(false);
     const prevHeightRef = useRef(0);
     const firstLoadRef = useRef(true);
+    const autoFillRef = useRef(false);
 
     useEffect(() => {
         const el = containerRef.current;
@@ -41,9 +42,9 @@ export default function MessageList({
     }, []);
     useEffect(() => {
         loadingRef.current = false;
-        userScrolledRef.current = false;
         prevHeightRef.current = 0;
         firstLoadRef.current = true;
+        autoFillRef.current = false;
     }, [activeChat]);
 
     useEffect(() => {
@@ -54,8 +55,8 @@ export default function MessageList({
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (!entry.isIntersecting) return;
-                if (!userScrolledRef.current) return;
                 if (loadingRef.current) return;
+                if (!userScrolledRef.current) return;
                 if (!hasMore) return;
 
                 prevHeightRef.current = container.scrollHeight;
@@ -66,7 +67,7 @@ export default function MessageList({
             {
                 root: container,
                 threshold: 0,
-                rootMargin: "150px 0px 0px 0px",
+                rootMargin: "0px",
             }
         );
 
@@ -83,6 +84,11 @@ export default function MessageList({
             firstLoadRef.current = false;
             return;
         }
+        if (autoFillRef.current) {
+            autoFillRef.current = false;
+            loadingRef.current = false;
+            return;
+        }
 
         if (loadingRef.current) {
             const newHeight = container.scrollHeight;
@@ -92,7 +98,6 @@ export default function MessageList({
         }
 
     }, [messages]);
-
 
     return (
         <div ref={containerRef} className="flex-1 bg-gray-100 min-h-0 overflow-y-auto px-6 py-4 space-y-4 from-purple-50 to-blue-50">
