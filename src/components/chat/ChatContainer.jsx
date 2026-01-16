@@ -171,6 +171,8 @@ export default function ChatContainer({ toggleTheme }) {
             setInput={chat.setInput}
             messagesEndRef={chat.messagesEndRef}
             replyMsg={chat.replyMsg}
+            handleLoadMore={chat.handleLoadMore}
+            hasMore={chat.hasMore}
             clearReply={chat.clearReply}
             getMessagePreview={chat.getMessagePreview}
             showSearchPanel={chat.showSearchPanel}

@@ -7,7 +7,7 @@ import { useChatSocket } from "./useChatSocket";
 import { usePollActions } from "./handleSendPoll";
 import { useCallLogic } from "./useCallLogic";
 import { useShareLocation } from "./useSendLocation";
-import { selectMessagesByChatKey } from "../redux/selectors/chatSelector";
+import { selectMessagesByChatKey, selectHasMoreByChatKey } from "../redux/selectors/chatSelector";
 import {
     makeChatKeyFromActive,
     getPurePreview,
@@ -27,12 +27,19 @@ export default function useChatLogic({
     const contacts = useSelector((state) => state?.listUser?.list || []);
     const messagesEndRef = useRef(null);
     const skipNextAutoScrollRef = useRef(false);
+    const prevLenRef = useRef(0);
+    const requestedRef = useRef(false);
+    const pageRef = useRef(1);
 
     const ui = useChatState();
     const callLogic = useCallLogic({ activeChat, currentUser, dispatch });
     const search = useChatSearch(messages, chatKey);
     const poll = usePollActions({ activeChat, chatKey, currentUser });
     const location = useShareLocation({ activeChat, chatKey, currentUser });
+
+    const hasMore = useSelector(
+        chatKey ? selectHasMoreByChatKey(chatKey) : () => true
+    );
 
     const actions = useChatActions({
         ...ui,
@@ -42,13 +49,39 @@ export default function useChatLogic({
         dispatch,
     });
 
-
     const { loadHistory } = useChatSocket(currentUser, callLogic);
+    const handleLoadMore = () => {
+        if (!activeChat) return;
+        if (!hasMore) return;
+
+        skipNextAutoScrollRef.current = true;
+        pageRef.current += 1;
+
+        loadHistory(pageRef.current, activeChat);
+    };
+
+    useEffect(() => {
+        pageRef.current = 1;
+        prevLenRef.current = 0;
+        requestedRef.current = false;
+        skipNextAutoScrollRef.current = false;
+    }, [chatKey]);
+    useEffect(() => {
+        if (!activeChat) return;
+        if (requestedRef.current) return;
+
+        requestedRef.current = true;
+        skipNextAutoScrollRef.current = true;
+
+        pageRef.current = 1;
+        loadHistory(1, activeChat);
+    }, [activeChat, loadHistory]);
 
 
     useEffect(() => {
         const prevLen = prevLenRef.current;
         const nextLen = messages?.length || 0;
+
         prevLenRef.current = nextLen;
 
         if (nextLen > prevLen) {
@@ -59,8 +92,6 @@ export default function useChatLogic({
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }
     }, [messages]);
-
-    const prevLenRef = useRef(0);
 
     return {
         ...ui,
@@ -83,7 +114,6 @@ export default function useChatLogic({
             handleUndoDeleteForMe: actions.handleUndoDeleteForMe,
             handleChatSelect: (contact) => {
                 setActiveChat(contact);
-                loadHistory(1, contact);
                 ui.setShowEmojiPicker(false);
                 ui.setShowStickerPicker(false);
                 ui.setShowGroupMenu(false);
@@ -91,7 +121,9 @@ export default function useChatLogic({
             markSkipNextAutoScroll: () => {
                 skipNextAutoScrollRef.current = true;
             },
+            handleLoadMore,
             loadHistory,
+            hasMore,
             startReply: (msg) => ui.setReplyMsg(msg),
             clearReply: () => ui.setReplyMsg(null),
             toggleSearchPanel: () => ui.setShowSearchPanel((v) => !v),

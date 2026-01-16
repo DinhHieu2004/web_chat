@@ -7,7 +7,8 @@ import {
     setUserOnlineStatus,
 } from "../redux/slices/listUserSlice";
 import {chatSocketServer} from "../services/socket";
-import {tryParseCustomPayload} from "../utils/chatDataFormatter.js";
+import {tryParseCustomPayload, makeChatKeyFromActive} from "../utils/chatDataFormatter.js";
+import { resetMessages} from "../redux/slices/chatSlice";
 
 export default function useSidebarLogic(searchTerm, onSelectContact) {
     const dispatch = useDispatch();
@@ -15,6 +16,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     const {list, activeChatId} = useSelector((state) => state.listUser);
     const {isAuthenticated, user} = useSelector((state) => state.auth);
     const bootedRef = useRef(false);
+    const activeChat = useSelector(state => state.chat.activeChatKey)
 
     const decodeEmojiFromCpsJson = (raw) => {
         if (typeof raw !== "string") return "";
@@ -213,6 +215,9 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
     }, [list, searchTerm, activeTab]);
 
     const handleSelect = (item) => {
+        const nextChatKey = makeChatKeyFromActive(item);
+
+        dispatch(resetMessages(nextChatKey));
         dispatch(setActiveChat(item.name));
         dispatch(
             setListUser({
