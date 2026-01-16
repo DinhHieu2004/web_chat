@@ -93,7 +93,7 @@ export default function ChatInput({
     };
 
     useEffect(() => {
-        if (!showPicker || !showLocaltionCF) return;
+        if (!showPicker && !showLocaltionCF) return;
 
         const handleClickOutside = (e) => {
             if (
