@@ -43,7 +43,7 @@ export default function AuthBootstrap({ children }) {
     if (status === "loading") {
         return (
             <div className="flex items-center justify-center h-screen">
-                Đang đăng nhập lại...
+                Đang đăng nhập...
             </div>
         );
     }

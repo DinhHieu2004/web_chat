@@ -29,13 +29,13 @@ export default function ChatArea({
     onUndoDelete,
     onCloseUndoToast,
     currentUser,
+    handleLoadMore,
     ...rest
 }) {
 
     const myName = useSelector(state => state.auth.user);
 
     const { typing, handleFocus, handleBlur } = useTypingLogic({ activeChat });
-
 
     const typingUsers = Object.keys(typing).filter(name => String(name) !== String(myName));
 
@@ -53,6 +53,8 @@ export default function ChatArea({
                 activeChat={activeChat}
                 messageRefs={messageRefs}
                 onReply={handlers.startReply}
+                onLoadMore={handlers.handleLoadMore}
+                hasMore={handlers.hasMore}
                 onForward={handlers.startForward}
                 onVote={handlers?.handleSendPollVote}
                 callLogic={handlers.callLogic}
@@ -102,6 +104,7 @@ export default function ChatArea({
                 <div className="fixed left-4 bottom-4 z-9999">
                     <div
                         className="
+
         w-[360px] max-w-[calc(100vw-2rem)]
         flex items-center justify-between gap-3
         rounded-xl border shadow-md
@@ -118,6 +121,7 @@ export default function ChatArea({
                             {undoToast.status === "success" && (
                                 <span
                                     className="
+
               inline-flex items-center justify-center
               w-5 h-5 rounded-full
               bg-blue-50 text-blue-600
