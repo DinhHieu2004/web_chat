@@ -9,6 +9,8 @@ const AppRouter = ({ toggleTheme }) => {
       <Route path="/" element={<Navigate to="/chat/login" replace />} />
 
       <Route path="/chat/login" element={<AuthForm />} />
+      <Route path="/chat/register" element={<AuthForm />} />
+
       <Route
         path="/chat"
         element={

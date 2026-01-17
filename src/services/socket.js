@@ -35,6 +35,7 @@ class ChatSocketServer {
             this.flushQueue();
         }
     }
+   
 
     connect() {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -63,14 +64,14 @@ class ChatSocketServer {
                     console.log("received:", packet);
 
                     if (packet?.event === "AUTH" && packet?.status === "error") {
-                        console.warn("[WS] AUTH error:", packet?.mes);
+                    //    console.warn("[WS] AUTH error:", packet?.mes);
                         
                         if (!this.pendingAuth) {
                             this.setAuthed(false);
                             const allowed = new Set(["LOGIN", "RE_LOGIN", "REGISTER"]);
                             this.queue = this.queue.filter((p) => allowed.has(p?.data?.event));
                         } else {
-                            console.log("[WS] AUTH error but auth request pending, ignoring");
+                        //    console.log("[WS] AUTH error but auth request pending, ignoring");
                         }
                         return;
                     }

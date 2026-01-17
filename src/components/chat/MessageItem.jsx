@@ -391,7 +391,7 @@ export default function MessageItem({
                                     onClick={() => onVote?.(poll.pollId, opt.id)}
                                     disabled={!onVote}
                                     className={`relative flex items-center justify-between px-4 py-3 rounded-lg transition-all overflow-hidden ${isVotedByMe
-                                        ? "bg-linear-to-r from-purple-500 to-blue-500 text-white shadow-md"
+                                        ? "bg-blue-600 text-white"
                                         : "bg-gray-100 hover:bg-gray-200 text-gray-800"
                                         }`}
                                     type="button"
@@ -637,10 +637,10 @@ export default function MessageItem({
 
                 <div
                     className={`px-4 py-2 rounded-lg message-bubble 
-                    break-words break-all whitespace-pre-wrap overflow-hidden max-w-full
+                    wrap-break-wordbreak-words break-all whitespace-pre-wrap overflow-hidden max-w-full
                        ${isMe
-                        ? "bg-linear-to-r from-purple-500 to-blue-500 text-white"
-                        : "bg-white text-gray-900"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-900"
                         }`}
                 >
                     {replyMeta &&

@@ -166,416 +166,150 @@ export default function ChatInput({
 
     return (
         <div className="bg-white border-t border-gray-200 relative">
-            {/* Hidden file inputs */}
-            <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={onFileSelect}
-                accept="*/*"
-            />
-            <input
-                ref={imageInputRef}
-                type="file"
-                className="hidden"
-                onChange={onFileSelect}
-                accept="image/*"
-            />
-            <input
-                ref={videoInputRef}
-                type="file"
-                className="hidden"
-                onChange={onFileSelect}
-                accept="video/*,image/gif"
-            />
-            {/* Poll Creator */}
-            {showPollCreator && (
-                <PollCreator
-                    onClose={() => setShowPollCreator(false)}
-                    onCreate={handleCreatePoll}
-                />
-            )}
+            <input ref={fileInputRef} type="file" className="hidden" onChange={onFileSelect} accept="*/*" />
+            <input ref={imageInputRef} type="file" className="hidden" onChange={onFileSelect} accept="image/*" />
+            <input ref={videoInputRef} type="file" className="hidden" onChange={onFileSelect} accept="video/*,image/gif" />
 
-            {/* File preview area */}
+            {showPollCreator && <PollCreator onClose={() => setShowPollCreator(false)} onCreate={handleCreatePoll} />}
+
             {selectedFile && (
-                <div className="px-4 pt-3 pb-2 border-b border-gray-100">
-                    <div className="flex items-start gap-3 bg-gray-50 rounded-lg p-3">
-                        {previewUrl ? (
-                            <img
-                                src={previewUrl}
-                                alt="Preview"
-                                className="w-16 h-16 object-cover rounded border border-gray-200"
-                            />
-                        ) : (
-                            <div className="w-16 h-16 bg-gray-200 rounded border border-gray-300 flex items-center justify-center">
-                                <FaPaperclip className="text-gray-500" size={24} />
-                            </div>
-                        )}
-
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                                {selectedFile.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                {(selectedFile.size / 1024).toFixed(2)} KB
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={handleRemoveFile}
-                            className="p-1 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-red-500"
-                            title="Xóa file"
-                            type="button"
-                        >
-                            <FaTimes size={16} />
-                        </button>
-                    </div>
+                <div className="px-4 py-2 border-b flex items-center gap-3 bg-gray-50">
+                    {previewUrl ? (
+                        <img src={previewUrl} className="w-12 h-12 object-cover rounded border" />
+                    ) : (
+                        <FaPaperclip className="text-gray-400" size={20} />
+                    )}
+                    <div className="flex-1 min-w-0 italic text-sm text-gray-600 truncate">{selectedFile.name}</div>
+                    <button onClick={handleRemoveFile} className="text-red-500 p-1"><FaTimes /></button>
                 </div>
             )}
+
             {replyMsg && (
-                <div className="flex items-center justify-between px-3 py-2 mb-2 bg-gray-100 border-l-4 border-purple-500 rounded">
-                    <div className="text-xs text-gray-700 min-w-0">
-                        <span className="font-semibold">
-                            Trả lời {replyMsg.sender === "user" ? "Bạn" : replyMsg.from}
-                        </span>
-                        <div className="flex items-center gap-2 mt-1">
-                            {preview?.url && isImageLike && (
-                                <img
-                                    src={preview.url}
-                                    className="max-w-12 max-h-10 rounded object-contain"
-                                />
-                            )}
-                            {preview?.url && preview.type === "video" && (
-                                <video
-                                    src={preview.url}
-                                    className="max-w-12 max-h-10 rounded object-contain"
-                                    controls
-                                    muted
-                                    crossOrigin="anonymous"
-                                />
-                            )}
-
-                            {!preview?.url && (
-                                <span className="italic truncate">
-                                    {preview?.text || preview?.fileName || preview?.type}
-                                </span>
-                            )}
-                            {isFile && (
-                                <span className="flex items-center gap-1 italic truncate">
-                                    <FaFileAlt className="shrink-0" />
-                                    <span className="truncate">
-                                        {preview.fileName || "Tệp đính kèm"}
-                                    </span>
-                                </span>
-                            )}
-                        </div>
+                <div className="flex items-center justify-between px-4 py-2 bg-purple-50 border-l-4 border-purple-500">
+                    <div className="text-xs truncate">
+                        <span className="font-bold text-purple-700">Đang trả lời: </span>
+                        {preview?.text || "Tệp tin/Hình ảnh"}
                     </div>
-
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handlers.clearReply();
-                        }}
-                        className="ml-2 text-gray-400 hover:text-red-500"
-                    >
-                        ✕
-                    </button>
+                    <button onClick={handlers.clearReply} className="text-gray-400">✕</button>
                 </div>
             )}
 
-            {/* Input area */}
-            <div className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
+            <div className="px-3 py-3">
+                <div className="flex items-end gap-2">
+
+                    <div className="flex items-center gap-1 shrink-0 mb-1">
                         {isGroupChat && (
-                            <button
-                                onClick={() => setShowPollCreator(true)}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
-                                title="Tạo cuộc thăm dò ý kiến"
-                                disabled={isUploading}
-                                type="button"
-                            >
-                                <FaChartBar size={18} />
-                            </button>
+                            <button onClick={() => setShowPollCreator(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full" title="Poll"><FaChartBar size={18} /></button>
                         )}
-                        <div className="relative flex items-center">
+
+                        <div className="relative">
                             {showLocaltionCF && (
-                                <div className="absolute bottom-full mb-3 left-0 z-9999 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2">
-                                    <p className="text-sm text-gray-700 mb-3 font-medium leading-snug">
-                                        Xác nhận gửi vị trí của bạn?
-                                    </p>
+                                <div className="absolute bottom-full mb-3 left-0 z-9999 w-48 bg-white border rounded-xl shadow-xl p-3">
+                                    <p className="text-xs mb-2">Gửi vị trí hiện tại?</p>
                                     <div className="flex gap-2">
-                                        <button
-                                            onClick={confirmAndSendLocation}
-                                            className="flex-1 bg-linear-to-r from-purple-500 to-blue-500 text-white text-xs font-bold py-2 rounded-lg hover:opacity-90 transition-opacity"
-                                        >
-                                            Gửi
-                                        </button>
-                                        <button
-                                            onClick={() => setShowLocationConfirm(false)}
-                                            className="flex-1 bg-gray-100 text-gray-600 text-xs font-bold py-2 rounded-lg hover:bg-gray-200 transition-colors"
-                                        >
-                                            Hủy
-                                        </button>
+                                        <button onClick={confirmAndSendLocation} className="flex-1 bg-blue-600 text-white text-[10px] py-1 rounded">Gửi</button>
+                                        <button onClick={() => setShowLocaltionCF(false)} className="flex-1 bg-gray-100 text-[10px] py-1 rounded">Hủy</button>
                                     </div>
-                                    <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-r border-b border-gray-200 rotate-45"></div>
                                 </div>
                             )}
-
-                            <button
-                                onClick={() => setShowLocaltionCF(!showLocaltionCF)}
-                                className={`p-2 rounded-full transition-all ${showLocaltionCF ? "bg-purple-100 text-purple-600 shadow-inner" : "hover:bg-gray-100 text-gray-600"
-                                    }`}
-                                title="Chia sẻ vị trí"
-                                disabled={isUploading}
-                                type="button"
-                            >
-                                <FaLocationArrow size={18} />
-                            </button>
+                            <button onClick={() => setShowLocaltionCF(!showLocaltionCF)} className={`p-2 rounded-full ${showLocaltionCF ? "text-blue-600 bg-blue-50" : "text-gray-500"}`}><FaLocationArrow size={18} /></button>
                         </div>
 
-                        <button
-                            onClick={handleFileClick}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
-                            title="Gửi file"
-                            disabled={isUploading}
-                            type="button"
-                        >
-                            <FaPaperclip size={18} />
-                        </button>
+                        <button onClick={handleFileClick} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><FaPaperclip size={18} /></button>
+                        <button onClick={handleImageClick} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><FaImage size={18} /></button>
 
-                        <button
-                            onClick={handleImageClick}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
-                            title="Gửi hình ảnh"
-                            disabled={isUploading}
-                            type="button"
-                        >
-                            <FaImage size={18} />
-                        </button>
-
-                        <div className="relative flex items-center gap-1">
+                        <div className="relative flex items-center shrink-0">
                             <button
-                                ref={pickerBtnRef}
                                 onClick={() => togglePicker("STICKER")}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
-                                title="Sticker"
-                                disabled={isUploading}
+                                className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"
                                 type="button"
                             >
-                                <LuSticker size={18} />
-                            </button>
-
-                            <button
-                                onClick={() => togglePicker("EMOJI")}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600"
-                                title="Emoji"
-                                disabled={isUploading}
-                                type="button">
                                 <FaSmile size={18} />
                             </button>
-                            <button onClick={() => { setRichMode((v) => !v); setRecord(false) }}
-                                className={`p-2 rounded-full ${richMode ? "bg-purple-100 text-purple-600" : "text-gray-600"}`}
-                                title="Chữ kiểu" type="button">Aa
-                            </button>
 
-
-                            <button
-                                onClick={() => setRecord(true)}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 disabled:opacity-50"
-                                title="Voice"
-                                disabled={isUploading}
-                                type="button"
-                            >
-                                <FaMicrophone size={18} />
-                            </button>
-
-                            <div className="fixed left-55 bottom-15 z-9999">
-                                <ChatPickerPanel
-                                    open={showPicker}
-                                    panelRef={pickerPanelRef}
-                                    activeTab={activeTab}
-                                    setActiveTab={setActiveTab}
-                                    onPickEmoji={(emoji) => {
-                                        setInput((prev) => (prev || "") + emoji);
-                                    }}
-                                    onPickSticker={(sticker) => {
-                                        handlers.handleSendSticker?.(sticker);
-                                        setShowPicker(false);
-                                    }}
-                                    onPickGif={(gif) => {
-                                        handlers.handleSendGif?.(gif);
-                                        setShowPicker(false);
-                                    }}
-                                />
-                            </div>
+                            {showPicker && (
+                                <div className="absolute bottom-full left-0 mb-2 z-9999">
+                                    <ChatPickerPanel
+                                        open={showPicker}
+                                        panelRef={pickerPanelRef}
+                                        activeTab={activeTab}
+                                        setActiveTab={setActiveTab}
+                                        onPickEmoji={(emoji) => setInput(prev => (prev || "") + emoji)}
+                                        onPickSticker={(s) => { handlers.handleSendSticker?.(s); setShowPicker(false); }}
+                                        onPickGif={(g) => { handlers.handleSendGif?.(g); setShowPicker(false); }}
+                                    />
+                                </div>
+                            )}
                         </div>
+
+                        <button onClick={() => { setRichMode(!richMode); setRecord(false); }} className={`p-2 rounded-full font-bold ${richMode ? "bg-blue-100 text-blue-600" : "text-gray-500"}`}>Aa</button>
+                        <button onClick={() => setRecord(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><FaMicrophone size={18} /></button>
                     </div>
-                    <div className="flex-1" />
+
+                    <div className="flex-1 min-w-0 relative">
+                        {record ? (
+                            <VoiceRecorder onCancel={() => setRecord(false)} onSend={(audio) => { handlers.handleSendVoice(audio); setRecord(false); }} />
+                        ) : richMode ? (
+                            <div
+                                ref={editorRef}
+                                contentEditable
+                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl min-h-10 max-h-32 overflow-y-auto focus:outline-none focus:border-blue-500 bg-white text-sm"
+                                onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
+                                onKeyUp={syncFormat}
+                                onMouseUp={syncFormat}
+                            />
+                        ) : (
+                            <input
+                                type="text"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSendWithFile())}
+                                placeholder={isUploading ? "Đang tải..." : "Nhập tin nhắn..."}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 text-sm"
+                            />
+                        )}
+                    </div>
+
                     <button
                         onClick={selectedFile ? handleSendWithFile : (richMode ? onSendRichText : handleSend)}
-
-                        
                         disabled={isUploading || (!input.trim() && !selectedFile && !(richMode && richContent.trim()))}
-                        className="bg-linear-to-br from-purple-500 to-blue-500 text-white p-2 rounded-full hover:from-purple-600 hover:to-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Gửi"
-                        type="button"
+                        className="shrink-0 bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-300 transition-all mb-0.5"
                     >
-                        <FaPaperPlane size={18} />
+                        <FaPaperPlane size={16} />
                     </button>
                 </div>
 
-
-
-                {/* <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                if (selectedFile) {
-                  handleSendWithFile();
-                } else {
-                  handleSend();
-                }
-              }
-            }}
-            placeholder={
-              isUploading
-                ? "Đang tải file lên..."
-                : selectedFile
-                ? "Thêm chú thích cho file..."
-                : "Nhập tin nhắn..."
-            }
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
-            disabled={isUploading}
-          /> */}
-
-                {record ? (
-                    <VoiceRecorder
-                        onCancel={() => setRecord(false)}
-                        onSend={(audioB) => {
-                            handlers.handleSendVoice(audioB);
-                            setRecord(false);
-                        }}
-                    />
-                ) : richMode ? (
-                    <div
-                        ref={editorRef}
-                        contentEditable
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none"
-                        data-placeholder="Nhập tin nhắn..."
-                        onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();
-                                document.execCommand("insertHTML", false, "<br><br>");
-                            }
-                        }}
-                        onKeyUp={syncFormat}
-                        onMouseUp={syncFormat}
-                        onFocus={syncFormat}
-                    />
-                ) : (
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSend();
-                            }
-                        }}
-
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-
-
-                        placeholder="Nhập tin nhắn..."
-                        className="w-full px-4 py-2 border border-gray-300 rounded-full"
-                        disabled={isUploading}
-                    />
-                )}
                 {richMode && !record && (
-                    <div className="flex items-center gap-2 mt-2 pt-2 text-sm">
-                        <button type="button" onClick={() => {
-                            document.execCommand("bold"); syncFormat();
-                        }}
-                            className={`px-2 py-1 border rounded hover:bg-gray-100 font-bold ${format.bold ? "bg-purple-100 text-purple-600" : "text-gray-600"
-                                }`}>B
-                        </button>
-                        <button type="button" onClick={() => {
-                            document.execCommand("italic"); syncFormat();
-                        }}
-                            className={`px-2 py-1 border rounded hover:bg-gray-100 italic ${format.italic ? "bg-purple-100 text-purple-600" : "text-gray-600"
-                                }`}>I
-                        </button>
-                        <button type="button" onClick={() => {
-                            document.execCommand("underline"); syncFormat();
-                        }}
-                            className={`px-2 py-1 border rounded hover:bg-gray-100 underline ${format.underline ? "bg-purple-100 text-purple-600" : "text-gray-600"
-                                }`}>U
-                        </button>
-                        <button type="button" onClick={() => {
-                            document.execCommand("strikeThrough"); syncFormat();
-                        }}
-                            className={`px-2 py-1 border rounded hover:bg-gray-100 line-through ${format.strike ? "bg-purple-100 text-purple-600" : "text-gray-600"
-                                }`}>S
-                        </button>
-                        <input
-                            type="color"
-                            className="w-8 h-8 p-0 border border-gray-300 rounded cursor-pointer"
-                            onChange={(e) =>
-                                document.execCommand("foreColor", false, e.target.value)
-                            }
-                        />
+                    <div className="flex items-center gap-1 mt-2 p-1 bg-gray-50 rounded-lg border border-dashed border-gray-300 overflow-x-auto">
+                        <button type="button" onClick={() => { document.execCommand("bold"); syncFormat(); }} className={`p-1.5 w-8 h-8 rounded border ${format.bold ? "bg-blue-600 text-white" : "bg-white"}`}>B</button>
+                        <button type="button" onClick={() => { document.execCommand("italic"); syncFormat(); }} className={`p-1.5 w-8 h-8 rounded border italic ${format.italic ? "bg-blue-600 text-white" : "bg-white"}`}>I</button>
+                        <button type="button" onClick={() => { document.execCommand("underline"); syncFormat(); }} className={`p-1.5 w-8 h-8 rounded border underline ${format.underline ? "bg-blue-600 text-white" : "bg-white"}`}>U</button>
+                        <input type="color" className="w-8 h-8 p-0.5 border rounded bg-white cursor-pointer" onChange={(e) => document.execCommand("foreColor", false, e.target.value)} />
 
-                        <select
-                            className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50"
-                            onChange={(e) =>
-                                document.execCommand("fontSize", false, e.target.value)
-                            }
-                        >
-                            <option value="3">Bình thường</option>
-                            <option value="5">Lớn</option>
-                            <option value="7">Rất lớn</option>
+                        <select className="text-xs border rounded h-8 px-1" onChange={(e) => document.execCommand("fontSize", false, e.target.value)}>
+                            <option value="3">Size m</option>
+                            <option value="5">Size L</option>
+                            <option value="7">Size XL</option>
                         </select>
-                        <div className="overflow-x-auto" style={{ width: "300px" }}>
-                            <div className="flex gap-2 px-1">
-                                {FONTS.map((item) => (
-                                    <button
-                                        key={item.font}
-                                        type="button"
-                                        style={{ fontFamily: item.font }}
-                                        className={`px-2 py-1 border rounded hover:bg-gray-100 shrink-0
-            ${format.fontName === item.font ? "bg-purple-100 text-purple-600 border-purple-500" : "text-gray-600 border-gray-300"}`}
-                                        onClick={() => {
-                                            if (editorRef.current) {
-                                                editorRef.current.focus();
-                                                document.execCommand("fontName", false, item.font);
-                                                syncFormat();
-                                            }
-                                        }}
-                                        title={item.font}
-                                    >
-                                        {item.label}
-                                    </button>
-                                ))}
-                            </div>
+
+                        <div className="h-6 w-px bg-gray-300 mx-1" />
+
+                        <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar">
+                            {FONTS.map((item) => (
+                                <button
+                                    key={item.font}
+                                    type="button"
+                                    style={{ fontFamily: item.font }}
+                                    className={`px-2 py-1 text-xs border rounded whitespace-nowrap ${format.fontName === item.font ? "border-blue-500 text-blue-600 bg-blue-50" : "bg-white text-gray-600"}`}
+                                    onClick={() => { editorRef.current?.focus(); document.execCommand("fontName", false, item.font); syncFormat(); }}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
                 )}
             </div>
-
-            {/* Upload progress */}
-            {isUploading && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
-                    <span>Đang tải file lên...</span>
-                </div>
-            )}
         </div>
     );
 }

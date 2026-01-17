@@ -15,7 +15,7 @@ export default function ChatHeader({ activeChat, onOpenSearch, onVoiceCall,
         <div className="bg-white px-6 py-4 flex items-center justify-between border-b border-gray-200">
             <div className="flex items-center gap-3">
                 <div
-                    className="w-10 h-10 bg-linear-to-br from-purple-400 to-blue-400
+                    className="w-10 h-10 bg-linear-to-br from-blue-400 to-cyan-400
                         rounded-full flex items-center justify-center text-white"
                 >
                     {isRoom ? <FaUsers size={18} /> : <FaUser size={18} />}
@@ -30,7 +30,6 @@ export default function ChatHeader({ activeChat, onOpenSearch, onVoiceCall,
                 {activeChat && (
                     <CallButtons
                         onVoiceCall={onVoiceCall}
-                        onVideoCall={onVideoCall}
                     />
                 )}
 
