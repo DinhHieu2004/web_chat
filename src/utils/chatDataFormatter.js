@@ -133,6 +133,7 @@ export const tryParseCustomPayload = (text) => {
 
   try {
     const parsed = JSON.parse(text);
+    const clientId = parsed?.clientId ?? null;
     const ct = parsed?.customType;
 
     if (ct === "recall") {
@@ -143,6 +144,7 @@ export const tryParseCustomPayload = (text) => {
         messageId: parsed.messageId ?? parsed.id ?? parsed.msgId ?? null,
         user: parsed.user ?? null,
         rawMes: text,
+        clientId: parsed.clientId ?? null,
       };
     }
 
@@ -172,6 +174,7 @@ export const tryParseCustomPayload = (text) => {
     if (ct === "call_request") {
       return {
         customType: "call_request",
+        clientId,
         callType: parsed.callType || parsed.type || null,
         roomUrl: parsed.roomUrl || parsed.url || null,
         isGroup:
@@ -190,7 +193,7 @@ export const tryParseCustomPayload = (text) => {
       return {
         customType: "poll",
         type: "poll",
-
+        clientId,
         poll: parsed.payload || parsed,
         text: parsed.question || "[Bình chọn]",
         rawMes: text,
@@ -202,6 +205,7 @@ export const tryParseCustomPayload = (text) => {
 
       return {
         type: "emoji",
+        clientId,
         url: null,
         text: emojiText,
         fileName: null,
@@ -242,6 +246,7 @@ export const tryParseCustomPayload = (text) => {
         type: "forward",
         url: parsed.url || null,
         text: displayText,
+        clientId,
         fileName: parsed.fileName || null,
         meta,
         blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
@@ -253,6 +258,7 @@ export const tryParseCustomPayload = (text) => {
       return {
         customType: ct,
         type: ct,
+        clientId: parsed.clientId ?? null,
         url: parsed.url || null,
         text: typeof parsed.text === "string" ? parsed.text : "",
         fileName: parsed.fileName || null,
@@ -268,7 +274,7 @@ export const tryParseCustomPayload = (text) => {
 
 export const buildEmojiMessage = (text) => {
   const cps = Array.from(text).map((ch) =>
-    ch.codePointAt(0).toString(16).toUpperCase()
+    ch.codePointAt(0).toString(16).toUpperCase(),
   );
 
   return JSON.stringify({
@@ -427,7 +433,7 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
 
     if (!previewCps && typeof rawText === "string" && rawText.trim()) {
       previewCps = Array.from(rawText).map((ch) =>
-        ch.codePointAt(0).toString(16).toUpperCase()
+        ch.codePointAt(0).toString(16).toUpperCase(),
       );
     }
 
@@ -435,7 +441,7 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
       const t = previewToText(origin);
       if (typeof t === "string" && t && t !== "[Emoji]") {
         previewCps = Array.from(t).map((ch) =>
-          ch.codePointAt(0).toString(16).toUpperCase()
+          ch.codePointAt(0).toString(16).toUpperCase(),
         );
       }
     }
@@ -487,7 +493,7 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
 export const extractRichText = (
   editor,
   defaultFont = "Arial",
-  defaultColor = "#000000"
+  defaultColor = "#000000",
 ) => {
   if (!editor) return null;
 
@@ -625,7 +631,7 @@ export const updatePollWithVote = (poll, optionId, userId) => {
   const updatedPoll = JSON.parse(JSON.stringify(poll));
 
   const hasVoted = updatedPoll.options.some((opt) =>
-    opt.voters?.includes(normalizedUserId)
+    opt.voters?.includes(normalizedUserId),
   );
 
   if (hasVoted && !updatedPoll.allowMultiple) {
@@ -666,7 +672,7 @@ export const removePollVote = (poll, optionId, userId) => {
   if (targetOption && targetOption.voters?.includes(normalizedUserId)) {
     targetOption.votes = Math.max(0, targetOption.votes - 1);
     targetOption.voters = targetOption.voters.filter(
-      (v) => v !== normalizedUserId
+      (v) => v !== normalizedUserId,
     );
     updatedPoll.totalVotes = Math.max(0, updatedPoll.totalVotes - 1);
   }
