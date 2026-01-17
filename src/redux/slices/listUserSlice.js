@@ -117,7 +117,9 @@ const listUserSlice = createSlice({
 
             state.list = newList;
         },
-
+        clearError(state) {
+            state.error = null;
+        },
 
         setUserOnlineStatus: (state, action) => {
             const { name, online } = action.payload || {};
@@ -191,6 +193,12 @@ const listUserSlice = createSlice({
             })
             .addCase(chatFriend.fulfilled, (state, action) => {
                 state.loading = false;
+                const isExist = action.payload?.data?.status;
+
+                if (!isExist) {
+                    state.error = "User không tồn tại";
+                    return;
+                }
                 const username =
                     action.payload?.user ||
                     action.meta?.arg?.user;
@@ -210,10 +218,10 @@ const listUserSlice = createSlice({
             })
             .addCase(chatFriend.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.payload || "User không tồn tại";
+                state.error = action.payload;
             });
     },
 });
 
-export const {setShowCreateModal, setListUser, setShowJoinModal, setActiveChat, setUserOnlineStatus, setShowAddFriendModal} = listUserSlice.actions;
+export const {setShowCreateModal, setListUser, setShowJoinModal, setActiveChat, setUserOnlineStatus, setShowAddFriendModal, clearError} = listUserSlice.actions;
 export default listUserSlice.reducer;

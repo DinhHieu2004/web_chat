@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {createRoom, setShowCreateModal, setShowJoinModal} from '../../redux/slices/listUserSlice';
+import {createRoom, setShowCreateModal, setShowJoinModal, clearError} from '../../redux/slices/listUserSlice';
 
 export default function CreateRoomModal() {
     const dispatch = useDispatch();
-    const { loading } = useSelector(state => state.listUser);
+    const { loading, error: apiError } = useSelector(state => state.listUser);
     const [roomName, setRoomName] = useState('');
     const [error, setError] = useState('');
 
@@ -23,6 +23,8 @@ export default function CreateRoomModal() {
     };
 
     const handleClose = () => {
+        setError('');
+        dispatch(clearError());
         dispatch(setShowCreateModal(false));
     };
 
@@ -34,15 +36,14 @@ export default function CreateRoomModal() {
                 <input type="text" placeholder="Tên phòng" value={roomName} onChange={e => {
                     setRoomName(e.target.value);
                     if (error) setError('');
+                    if (apiError) dispatch(clearError());
                 }}
                        className={`w-full border px-3 py-2 rounded mb-1 ${
                            error ? 'border-red-500' : ''
                        }`}
                 />
 
-                {error && (
-                    <p className="text-red-500 text-sm mb-3">{error}</p>
-                )}
+                {(error || apiError) && (<p className="text-red-500 text-sm mb-3">{error || "Phòng đã tồn tại"}</p>)}
 
                 <div className="flex justify-between items-center">
                     <button onClick={switchToJoin} className="text-blue-600 text-sm hover:underline">Đã có phòng? Tham gia</button>
