@@ -93,25 +93,27 @@ export default function ChatInput({
     };
 
     useEffect(() => {
-        if (!showPicker && !showLocaltionCF) return;
+    if (!showPicker && !showLocaltionCF) return;
 
-        const handleClickOutside = (e) => {
-            if (
-                pickerPanelRef.current?.contains(e.target) ||
-                pickerBtnRef.current?.contains(e.target)
-            ) {
-                return;
-            }
+    const handleClickOutside = (e) => {
+        if (showPicker && 
+            !pickerPanelRef.current?.contains(e.target) && 
+            !pickerBtnRef.current?.contains(e.target)) {
             setShowPicker(false);
+        }
 
-            if (showLocaltionCF && !locationConfirmRef.current?.contains(e.target)) {
-                setShowLocaltionCF(false);
-            }
-        };
+       
+        if (showLocaltionCF && 
+            locationConfirmRef.current && 
+            !locationConfirmRef.current.contains(e.target) &&
+            !e.target.closest('button')) { 
+            setShowLocaltionCF(false);
+        }
+    };
 
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [showPicker, showLocaltionCF]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+}, [showPicker, showLocaltionCF]);
 
     // ===== Upload inputs =====
     const fileInputRef = useRef(null);
@@ -158,6 +160,7 @@ export default function ChatInput({
         setShowPollCreator(false);
     };
     const confirmAndSendLocation = async () => {
+        console.log("click cf")
         setShowLocaltionCF(false);
         if (handleSendLocation) {
             await handleSendLocation();
@@ -215,7 +218,7 @@ export default function ChatInput({
                             )}
                             {isFile && (
                                 <span className="flex items-center gap-1 italic truncate">
-                                    <FaFileAlt className="shrink-0"/>
+                                    <FaFileAlt className="shrink-0" />
                                     <span className="truncate">
                                         {preview.fileName || "Tệp đính kèm"}
                                     </span>
@@ -238,7 +241,10 @@ export default function ChatInput({
 
                         <div className="relative ">
                             {showLocaltionCF && (
-                                <div className="absolute bottom-full mb-3 left-0 z-9999 w-48 bg-white border rounded-xl shadow-xl p-3">
+                                
+                                <div 
+                                ref={locationConfirmRef}
+                                className="absolute bottom-full mb-3 left-0 z-9999 w-48 bg-white border rounded-xl shadow-xl p-3">
                                     <p className="text-xs mb-2">Gửi vị trí hiện tại?</p>
                                     <div className="flex gap-2">
                                         <button onClick={confirmAndSendLocation} className="flex-1 bg-blue-600 text-white text-[10px] py-1 rounded">Gửi</button>
@@ -294,34 +300,34 @@ export default function ChatInput({
                         <VoiceRecorder onCancel={() => setRecord(false)} onSend={(audio) => { handlers.handleSendVoice(audio); setRecord(false); }} />
                     ) : richMode ? (
                         <div ref={editorRef} contentEditable
-                             className="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none"
-                             data-placeholder="Nhập tin nhắn..."
-                             onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
-                             onKeyDown={(e) => {
-                                 if (e.key === "Enter") {
-                                     e.preventDefault();
-                                     document.execCommand("insertHTML", false, "<br><br>");
-                                 }
-                             }}
-                             onKeyUp={syncFormat}
-                             onMouseUp={syncFormat}
-                             onFocus={syncFormat}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none"
+                            data-placeholder="Nhập tin nhắn..."
+                            onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    document.execCommand("insertHTML", false, "<br><br>");
+                                }
+                            }}
+                            onKeyUp={syncFormat}
+                            onMouseUp={syncFormat}
+                            onFocus={syncFormat}
                         />
                     ) : (
                         <input type="text" value={input}
-                               onChange={(e) => setInput(e.target.value)}
-                               onKeyDown={(e) => {
-                                   if (e.key === "Enter" && !e.shiftKey) {
-                                       e.preventDefault();
-                                       handleSend();
-                                   }
-                               }}
-                               onFocus={handleFocus}
-                               onBlur={handleBlur}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleSend();
+                                }
+                            }}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
 
-                               placeholder="Nhập tin nhắn..."
-                               className="w-full px-4 py-2 border border-gray-300 rounded-full"
-                               disabled={isUploading}
+                            placeholder="Nhập tin nhắn..."
+                            className="w-full px-4 py-2 border border-gray-300 rounded-full"
+                            disabled={isUploading}
                         />
                     )}
                 </div>
@@ -349,7 +355,7 @@ export default function ChatInput({
                         </button>
 
                         <input type="color" className="w-8 h-8 p-0.5 border rounded bg-white cursor-pointer"
-                               onChange={(e) => document.execCommand("foreColor", false, e.target.value)} />
+                            onChange={(e) => document.execCommand("foreColor", false, e.target.value)} />
 
                         <select className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50"
                             onChange={(e) =>

@@ -421,7 +421,7 @@ export default function MessageItem({
                   disabled={!onVote}
                   className={`relative flex items-center justify-between px-4 py-3 rounded-lg transition-all overflow-hidden ${
                     isVotedByMe
-                      ? "bg-linear-to-r from-purple-500 to-blue-500 text-white shadow-md"
+                      ? "bg-linear-to-r from-blue-500 to-blue-500 text-white shadow-md"
                       : "bg-gray-100 hover:bg-gray-200 text-gray-800"
                   }`}
                   type="button"
@@ -678,7 +678,7 @@ export default function MessageItem({
         <div
           className={`px-4 py-2 rounded-lg message-bubble ${
             isMe
-              ? "bg-linear-to-r from-purple-500 to-blue-500 text-white"
+              ? "bg-linear-to-r from-blue-500 to-blue-500 text-white"
               : "bg-white text-gray-900"
           }`}
         >
