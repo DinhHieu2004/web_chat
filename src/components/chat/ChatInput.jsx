@@ -185,16 +185,50 @@ export default function ChatInput({
             )}
 
             {replyMsg && (
-                <div className="flex items-center justify-between px-4 py-2 bg-purple-50 border-l-4 border-purple-500">
-                    <div className="text-xs truncate">
-                        <span className="font-bold text-purple-700">Đang trả lời: </span>
-                        {preview?.text || "Tệp tin/Hình ảnh"}
+                <div
+                    className="flex items-center justify-between px-3 py-2 mb-2 bg-gray-100 border-l-4 border-purple-500 rounded">
+                    <div className="text-xs text-gray-700 min-w-0">
+                        <span className="font-semibold">
+                            Trả lời {replyMsg.sender === "user" ? "Bạn" : replyMsg.from}
+                        </span>
+                        <div className="flex items-center gap-2 mt-1">
+                            {preview?.url && isImageLike && (
+                                <img
+                                    src={preview.url}
+                                    className="max-w-12 max-h-10 rounded object-contain"
+                                />
+                            )}
+                            {preview?.url && preview.type === "video" && (
+                                <video
+                                    src={preview.url}
+                                    className="max-w-12 max-h-10 rounded object-contain"
+                                    controls
+                                    muted
+                                    crossOrigin="anonymous"
+                                />
+                            )}
+
+                            {!preview?.url && (
+                                <span className="italic truncate">
+                                    {preview?.text || preview?.fileName || preview?.type}
+                                </span>
+                            )}
+                            {isFile && (
+                                <span className="flex items-center gap-1 italic truncate">
+                                    <FaFileAlt className="shrink-0"/>
+                                    <span className="truncate">
+                                        {preview.fileName || "Tệp đính kèm"}
+                                    </span>
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    <button onClick={handlers.clearReply} className="text-gray-400">✕</button>
+
+                    <button onClick={clearReply} className="text-gray-400">✕</button>
                 </div>
             )}
 
-            <div className="px-3 py-3">
+            <div className="px-4 py-3">
                 <div className="flex items-end gap-2">
 
                     <div className="flex items-center gap-1 shrink-0 mb-1">
@@ -202,7 +236,7 @@ export default function ChatInput({
                             <button onClick={() => setShowPollCreator(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full" title="Poll"><FaChartBar size={18} /></button>
                         )}
 
-                        <div className="relative">
+                        <div className="relative ">
                             {showLocaltionCF && (
                                 <div className="absolute bottom-full mb-3 left-0 z-9999 w-48 bg-white border rounded-xl shadow-xl p-3">
                                     <p className="text-xs mb-2">Gửi vị trí hiện tại?</p>
@@ -245,31 +279,7 @@ export default function ChatInput({
                         <button onClick={() => { setRichMode(!richMode); setRecord(false); }} className={`p-2 rounded-full font-bold ${richMode ? "bg-blue-100 text-blue-600" : "text-gray-500"}`}>Aa</button>
                         <button onClick={() => setRecord(true)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><FaMicrophone size={18} /></button>
                     </div>
-
-                    <div className="flex-1 min-w-0 relative">
-                        {record ? (
-                            <VoiceRecorder onCancel={() => setRecord(false)} onSend={(audio) => { handlers.handleSendVoice(audio); setRecord(false); }} />
-                        ) : richMode ? (
-                            <div
-                                ref={editorRef}
-                                contentEditable
-                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl min-h-10 max-h-32 overflow-y-auto focus:outline-none focus:border-blue-500 bg-white text-sm"
-                                onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
-                                onKeyUp={syncFormat}
-                                onMouseUp={syncFormat}
-                            />
-                        ) : (
-                            <input
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSendWithFile())}
-                                placeholder={isUploading ? "Đang tải..." : "Nhập tin nhắn..."}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 text-sm"
-                            />
-                        )}
-                    </div>
-
+                    <div className="flex-1" />
                     <button
                         onClick={selectedFile ? handleSendWithFile : (richMode ? onSendRichText : handleSend)}
                         disabled={isUploading || (!input.trim() && !selectedFile && !(richMode && richContent.trim()))}
@@ -279,33 +289,98 @@ export default function ChatInput({
                     </button>
                 </div>
 
+                <div className="flex-1 min-w-0 relative">
+                    {record ? (
+                        <VoiceRecorder onCancel={() => setRecord(false)} onSend={(audio) => { handlers.handleSendVoice(audio); setRecord(false); }} />
+                    ) : richMode ? (
+                        <div ref={editorRef} contentEditable
+                             className="w-full px-4 py-3 border border-gray-300 rounded-lg min-h-[120px] focus:outline-none"
+                             data-placeholder="Nhập tin nhắn..."
+                             onInput={() => setRichContent(editorRef.current?.innerHTML || "")}
+                             onKeyDown={(e) => {
+                                 if (e.key === "Enter") {
+                                     e.preventDefault();
+                                     document.execCommand("insertHTML", false, "<br><br>");
+                                 }
+                             }}
+                             onKeyUp={syncFormat}
+                             onMouseUp={syncFormat}
+                             onFocus={syncFormat}
+                        />
+                    ) : (
+                        <input type="text" value={input}
+                               onChange={(e) => setInput(e.target.value)}
+                               onKeyDown={(e) => {
+                                   if (e.key === "Enter" && !e.shiftKey) {
+                                       e.preventDefault();
+                                       handleSend();
+                                   }
+                               }}
+                               onFocus={handleFocus}
+                               onBlur={handleBlur}
+
+                               placeholder="Nhập tin nhắn..."
+                               className="w-full px-4 py-2 border border-gray-300 rounded-full"
+                               disabled={isUploading}
+                        />
+                    )}
+                </div>
+
                 {richMode && !record && (
-                    <div className="flex items-center gap-1 mt-2 p-1 bg-gray-50 rounded-lg border border-dashed border-gray-300 overflow-x-auto">
-                        <button type="button" onClick={() => { document.execCommand("bold"); syncFormat(); }} className={`p-1.5 w-8 h-8 rounded border ${format.bold ? "bg-blue-600 text-white" : "bg-white"}`}>B</button>
-                        <button type="button" onClick={() => { document.execCommand("italic"); syncFormat(); }} className={`p-1.5 w-8 h-8 rounded border italic ${format.italic ? "bg-blue-600 text-white" : "bg-white"}`}>I</button>
-                        <button type="button" onClick={() => { document.execCommand("underline"); syncFormat(); }} className={`p-1.5 w-8 h-8 rounded border underline ${format.underline ? "bg-blue-600 text-white" : "bg-white"}`}>U</button>
-                        <input type="color" className="w-8 h-8 p-0.5 border rounded bg-white cursor-pointer" onChange={(e) => document.execCommand("foreColor", false, e.target.value)} />
+                    <div className="flex items-center gap-2 mt-2 pt-2 text-sm">
+                        <button type="button" onClick={() => {
+                            document.execCommand("bold"); syncFormat();
+                        }} className={`px-2 py-1 border rounded text-gray-800 font-bold ${format.bold ? "bg-blue-600 text-white" : "bg-white"}`}>B
+                        </button>
 
-                        <select className="text-xs border rounded h-8 px-1" onChange={(e) => document.execCommand("fontSize", false, e.target.value)}>
-                            <option value="3">Size m</option>
-                            <option value="5">Size L</option>
-                            <option value="7">Size XL</option>
+                        <button type="button" onClick={() => {
+                            document.execCommand("italic"); syncFormat();
+                        }} className={`px-2 py-1 border rounded text-gray-800 italic ${format.italic ? "bg-blue-600 text-white" : "bg-white"}`}>I
+                        </button>
+
+                        <button type="button" onClick={() => {
+                            document.execCommand("underline"); syncFormat();
+                        }} className={`px-2 py-1 border rounded text-gray-800 underline ${format.underline ? "bg-blue-600 text-white" : "bg-white"}`}>U
+                        </button>
+
+                        <button type="button" onClick={() => {
+                            document.execCommand("strikeThrough"); syncFormat();
+                        }} className={`px-2 py-1 border rounded text-gray-800 line-through ${format.strike ? "bg-blue-600 text-white" : "bg-white"}`}>S
+                        </button>
+
+                        <input type="color" className="w-8 h-8 p-0.5 border rounded bg-white cursor-pointer"
+                               onChange={(e) => document.execCommand("foreColor", false, e.target.value)} />
+
+                        <select className="px-2 py-1 border border-gray-300 rounded bg-white hover:bg-gray-50"
+                            onChange={(e) =>
+                                document.execCommand("fontSize", false, e.target.value)
+                            }
+                        >
+                            <option value="3">Bình thường</option>
+                            <option value="5">Lớn</option>
+                            <option value="7">Rất lớn</option>
                         </select>
-
-                        <div className="h-6 w-px bg-gray-300 mx-1" />
-
-                        <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar">
-                            {FONTS.map((item) => (
-                                <button
-                                    key={item.font}
-                                    type="button"
-                                    style={{ fontFamily: item.font }}
-                                    className={`px-2 py-1 text-xs border rounded whitespace-nowrap ${format.fontName === item.font ? "border-blue-500 text-blue-600 bg-blue-50" : "bg-white text-gray-600"}`}
-                                    onClick={() => { editorRef.current?.focus(); document.execCommand("fontName", false, item.font); syncFormat(); }}
-                                >
-                                    {item.label}
-                                </button>
-                            ))}
+                        <div className="overflow-x-auto" style={{ width: "300px" }}>
+                            <div className="flex gap-2 px-1">
+                                {FONTS.map((item) => (
+                                    <button
+                                        key={item.font}
+                                        type="button"
+                                        style={{ fontFamily: item.font }}
+                                        className={`px-2 py-1 text-xs border rounded whitespace-nowrap ${format.fontName === item.font ? "border-blue-500 text-blue-600 bg-blue-50" : "bg-white text-gray-600"}`}
+                                        onClick={() => {
+                                            if (editorRef.current) {
+                                                editorRef.current.focus();
+                                                document.execCommand("fontName", false, item.font);
+                                                syncFormat();
+                                            }
+                                        }}
+                                        title={item.font}
+                                    >
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
