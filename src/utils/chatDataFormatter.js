@@ -135,23 +135,40 @@ export const tryParseCustomPayload = (text) => {
     const parsed = JSON.parse(text);
     const ct = parsed?.customType;
 
-    if (ct === "call_request") {
+    if (ct === "recall") {
       return {
-        customType: "call_request",
-        callType: parsed.callType || parsed.type || null,
-        roomUrl: parsed.roomUrl || parsed.url || null,
-        isGroup:
-          typeof parsed.isGroup === "boolean"
-            ? parsed.isGroup
-            : !!parsed.isGroup,
-        groupName: parsed.groupName || null,
-        text: typeof parsed.text === "string" ? parsed.text : "",
-        meta: parsed.meta || null,
-        blocks: Array.isArray(parsed.blocks) ? parsed.blocks : [],
+        ...parsed,
+        customType: "recall",
+        type: "recall",
+        messageId: parsed.messageId ?? parsed.id ?? parsed.msgId ?? null,
+        user: parsed.user ?? null,
         rawMes: text,
       };
     }
-    // ==================== XỬ LÝ CALL REQUEST ====================
+
+    if (ct === "delete_for_me") {
+      return {
+        ...parsed,
+        customType: "delete_for_me",
+        type: "delete_for_me",
+        messageId: parsed.messageId ?? parsed.id ?? parsed.msgId ?? null,
+        user: parsed.user ?? null,
+        rawMes: text,
+      };
+    }
+
+    if (ct === "restore_for_me") {
+      return {
+        ...parsed,
+        customType: "restore_for_me",
+        type: "restore_for_me",
+        messageId: parsed.messageId ?? parsed.id ?? parsed.msgId ?? null,
+        user: parsed.user ?? null,
+        rawMes: text,
+      };
+    }
+
+    // ==================== CALL REQUEST ====================
     if (ct === "call_request") {
       return {
         customType: "call_request",
@@ -392,8 +409,8 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
     previewType === "richText" && Array.isArray(origin?.blocks)
       ? origin.blocks
       : previewType === "richText" && Array.isArray(p?.blocks)
-      ? p.blocks
-      : [];
+        ? p.blocks
+        : [];
 
   let previewText = "";
   let previewCps = null;
@@ -430,8 +447,14 @@ export const buildForwardMessage = ({ originMsg, originChat, note = "" }) => {
     previewText = typeof rawText === "string" ? rawText : "";
   }
 
-  const previewLabel =
-  ["sticker", "gif", "image", "video", "audio", "file"].includes(previewType)
+  const previewLabel = [
+    "sticker",
+    "gif",
+    "image",
+    "video",
+    "audio",
+    "file",
+  ].includes(previewType)
     ? `[${String(previewType).toUpperCase()}]`
     : "";
 

@@ -109,7 +109,7 @@ export default function useChatLogic({
 
             handleSendLocation: location.sendLocation,
             handleDeleteForMe: actions.handleDeleteForMe,
-            handleRecallMessage: actions.handleRecallLocal,
+            handleRecallMessage: actions.handleRecallMessage,
             handleUndoDeleteForMe: actions.handleUndoDeleteForMe,
             handleChatSelect: (contact) => {
                 setActiveChat(contact);
