@@ -102,10 +102,6 @@ class ChatSocketServer {
                             }
                             return; 
                         }
-
-                        if (!msg.id || msg.id === 0) {
-                            msg.id = crypto.randomUUID();
-                        }
                     }
 
                     if (packet?.event && this.listeners[packet.event]) {
@@ -170,6 +166,7 @@ class ChatSocketServer {
 
         this.heartbeatInterval = setInterval(() => {
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                //
             } else {
                 this.stopHeartbeat();
             }
