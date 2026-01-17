@@ -79,24 +79,19 @@ const chatSlice = createSlice({
         recalledIds: {},
       };
     },
+    
     setHistory(state, action) {
       const { chatKey, messages, page } = action.payload;
       ensureChat(state, chatKey);
       const chat = state.messagesMap[chatKey];
-      if (page < chat.page) return;
 
       const incoming = Array.isArray(messages) ? messages : [];
-
-      if (incoming.length === 0) {
-        chat.hasMore = false;
-        return;
-      }
-
       const existingIds = new Set(chat.messages.map((m) => String(m.id)));
       const uniqueIncoming = incoming.filter(
         (m) => m?.id && !existingIds.has(String(m.id)),
       );
       const sorted = uniqueIncoming.sort((a, b) => a.actionTime - b.actionTime);
+
       if (page === 1) {
         chat.messages = sorted;
       } else {
@@ -105,12 +100,21 @@ const chatSlice = createSlice({
 
       chat.page = page;
       chat.hasMore = true;
+
+      sorted.forEach((msg) => {
+        if (msg?.reactions) {
+          msg.reactions = { ...msg.reactions };
+        }
+      });
     },
+
     removeMessage(state, action) {
       const { chatKey, id } = action.payload;
       const arr = state.messagesMap[chatKey]?.messages;
       if (!arr) return;
-      state.messagesMap[chatKey].messages = arr.filter((m) => String(m.id) !== String(id));
+      state.messagesMap[chatKey].messages = arr.filter(
+        (m) => String(m.id) !== String(id),
+      );
     },
 
     recallMessage(state, action) {
@@ -155,7 +159,6 @@ const chatSlice = createSlice({
 
     toggleReaction(state, action) {
       const { chatKey, messageId, emoji, user } = action.payload;
-
       const messages = state.messagesMap?.[chatKey]?.messages;
       if (!messages) return;
 

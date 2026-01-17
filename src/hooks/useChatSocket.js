@@ -460,7 +460,14 @@ export function useChatSocket(currentUser, callLogic) {
 
         reactionEvents.forEach((ev) => {
           if (!ev.messageId || !ev.emoji || !ev.user) return;
-          dispatch(toggleReaction({ chatKey: ck, ...ev }));
+          dispatch(
+            toggleReaction({
+              chatKey: ck,
+              messageId: ev.messageId,
+              emoji: ev.emoji,
+              user: ev.user,
+            }),
+          );
         });
       }
 

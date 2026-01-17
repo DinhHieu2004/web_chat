@@ -149,7 +149,10 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
             }
         };
 
+         chatSocketServer.on("CHECK_USER_ONLINE", onCheckOnline);
+
         return () => {
+             chatSocketServer.off("CHECK_USER_ONLINE", onCheckOnline);
             seqResolverRef.current = null;
         };
     }, [user, dispatch]);
@@ -168,7 +171,7 @@ export default function useSidebarLogic(searchTerm, onSelectContact) {
                     seqResolverRef.current = (val) => resolve(!!val);
 
                     try {
-                        //  chatSocketServer.send("CHECK_USER_ONLINE", { user: item.name });
+                         chatSocketServer.send("CHECK_USER_ONLINE", { user: item.name });
                     } catch {
                         seqResolverRef.current = null;
                         resolve(false);

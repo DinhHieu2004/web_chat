@@ -73,12 +73,9 @@ export function useChatActions({
     if (!message?.id || !unified || !activeChat || !currentUser) return;
 
     const messageChatKey = message.chatKey || chatKey;
-
     const userKey =
       typeof currentUser === "string"
-        ? currentUser.startsWith("user:")
-          ? currentUser
-          : `user:${currentUser}`
+        ? `user:${currentUser}`
         : `user:${currentUser.id}`;
 
     dispatch(
