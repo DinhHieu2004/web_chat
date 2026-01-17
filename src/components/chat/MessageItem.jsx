@@ -676,8 +676,9 @@ export default function MessageItem({
         </div>
 
         <div
-          className={`px-4 py-2 rounded-lg message-bubble ${
-            isMe
+          className={`px-4 py-2 rounded-lg message-bubble 
+          break-words break-all whitespace-pre-wrap overflow-hidden max-w-full
+          ${isMe
               ? "bg-linear-to-r from-blue-500 to-blue-500 text-white"
               : "bg-white text-gray-900"
           }`}

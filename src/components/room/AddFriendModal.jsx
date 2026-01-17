@@ -2,15 +2,16 @@ import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
     chatFriend,
-    setShowAddFriendModal,
+    setShowAddFriendModal, clearError,
 } from "../../redux/slices/listUserSlice";
 
 export default function AddFriendModal() {
     const dispatch = useDispatch();
-    const { loading } = useSelector((state) => state.listUser);
-
     const [friendName, setFriendName] = useState("");
     const [error, setError] = useState("");
+    const { loading, error: apiError } = useSelector(
+        (state) => state.listUser
+    );
 
     const handleAdd = () => {
         if (!friendName.trim()) {
@@ -23,6 +24,8 @@ export default function AddFriendModal() {
     };
 
     const handleClose = () => {
+        setError("");
+        dispatch(clearError());
         dispatch(setShowAddFriendModal(false));
     };
 
@@ -38,23 +41,17 @@ export default function AddFriendModal() {
                     onChange={(e) => {
                         setFriendName(e.target.value);
                         if (error) setError("");
+                        dispatch(clearError());
                     }}
                     className={`w-full border px-3 py-2 rounded mb-1 ${
                         error ? "border-red-500" : ""
                     }`}
                 />
 
-                {error && (
-                    <p className="text-red-500 text-sm mb-3">{error}</p>
-                )}
+                {(error || apiError) && (<p className="text-red-500 text-sm mb-3">{error || apiError}</p>)}
 
                 <div className="flex justify-end gap-3 mt-4">
-                    <button
-                        onClick={handleClose}
-                        className="px-4 py-2 bg-gray-200 rounded"
-                    >
-                        Hủy
-                    </button>
+                    <button onClick={handleClose} className="px-4 py-2 bg-gray-200 rounded">Hủy</button>
 
                     <button
                         onClick={handleAdd}

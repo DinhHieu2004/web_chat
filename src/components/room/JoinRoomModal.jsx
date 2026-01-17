@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { joinRoom, setShowJoinModal, setShowCreateModal } from '../../redux/slices/listUserSlice';
+import React, {useState} from 'react';
+import {useDispatch, useSelector} from 'react-redux';
+import {joinRoom, setShowJoinModal, setShowCreateModal, clearError} from '../../redux/slices/listUserSlice';
 
 export default function JoinRoomModal() {
     const dispatch = useDispatch();
-    const { loading } = useSelector(state => state.listUser);
+    const {loading, error: apiError} = useSelector(state => state.listUser);
     const [roomName, setRoomName] = useState('');
     const [error, setError] = useState('');
 
@@ -14,7 +14,7 @@ export default function JoinRoomModal() {
             return;
         }
         setError('');
-        dispatch(joinRoom({ name: roomName.trim() }));
+        dispatch(joinRoom({name: roomName.trim()}));
     };
 
     const switchToCreate = () => {
@@ -23,6 +23,8 @@ export default function JoinRoomModal() {
     };
 
     const handleClose = () => {
+        setError('');
+        dispatch(clearError());
         dispatch(setShowJoinModal(false));
     };
 
@@ -32,26 +34,26 @@ export default function JoinRoomModal() {
                 <h2 className="text-xl font-bold mb-4 text-tittle">Tham Gia Phòng</h2>
 
                 <input type="text" placeholder="Tên phòng" value={roomName} onChange={e => {
-                        setRoomName(e.target.value);
-                        if (error) setError('');
-                    }}
-                    className={`w-full border px-3 py-2 rounded mb-1 ${
-                        error ? 'border-red-500' : ''
-                    }`}
+                    setRoomName(e.target.value);
+                    if (error) setError('');
+                    if (apiError) dispatch(clearError());
+                }}
+                       className={`w-full border px-3 py-2 rounded mb-1 ${
+                           error ? 'border-red-500' : ''
+                       }`}
                 />
 
-                {error && (
-                    <p className="text-red-500 text-sm mb-3">{error}</p>
-                )}
+                {(error || apiError) && (<p className="text-red-500 text-sm mb-3">{error || "Phòng không tồn tại"}</p>)}
 
                 <div className="flex justify-between items-center">
-                    <button onClick={switchToCreate} className="text-blue-600 text-sm hover:underline">+ Tạo phòng mới</button>
+                    <button onClick={switchToCreate} className="text-blue-600 text-sm hover:underline">+ Tạo phòng mới
+                    </button>
 
                     <div className="flex gap-3">
                         <button onClick={handleClose} className="px-4 py-2 bg-gray-200 rounded">Hủy</button>
                         <button onClick={handleJoin} disabled={loading} className={`px-4 py-2 rounded text-white ${
-                                loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                            {loading ? 'Đang vào...' : 'Vào nhóm'}
+                            loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                            {loading ? 'Đang vào...' : 'Vào phòng'}
                         </button>
                     </div>
                 </div>
