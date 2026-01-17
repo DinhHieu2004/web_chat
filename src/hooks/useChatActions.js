@@ -39,43 +39,36 @@ export function useChatActions({
 }) {
   const pollActions = usePollActions({ activeChat, chatKey, currentUser });
 
-  const attachMetaAndClientId = (mes, clientId) => {
-    let obj = null;
-
-    if (typeof mes === "string" && mes.trim().startsWith("{")) {
-      try {
-        obj = JSON.parse(mes);
-      } catch {
-        obj = null;
-      }
-    }
-
-    if (!obj) {
-      obj = { customType: "text", text: String(mes ?? "") };
-    }
-
-    obj.clientId = clientId;
-
-    if (replyMsg) {
-      const reply = {
+  const attachReplyMeta = (mes) => {
+    if (!replyMsg) return mes;
+    const meta = {
+      reply: {
         msgId: replyMsg.id,
         from: replyMsg.from,
         type: replyMsg.type,
         preview: getMessagePreview(replyMsg),
-      };
-      obj.meta = { ...(obj.meta || {}), reply };
+      },
+    };
+    if (typeof mes === "string" && !mes.startsWith("{")) {
+      return JSON.stringify({ customType: "text", text: mes, meta });
     }
-
-    return JSON.stringify(obj);
+    try {
+      return JSON.stringify({ ...JSON.parse(mes), meta });
+    } catch {
+      return mes;
+    }
   };
 
   const handleToggleReaction = (message, unified) => {
     if (!message?.id || !unified || !activeChat || !currentUser) return;
 
     const messageChatKey = message.chatKey || chatKey;
+
     const userKey =
       typeof currentUser === "string"
-        ? `user:${currentUser}`
+        ? currentUser.startsWith("user:")
+          ? currentUser
+          : `user:${currentUser}`
         : `user:${currentUser.id}`;
 
     dispatch(
@@ -84,7 +77,7 @@ export function useChatActions({
         messageId: message.id,
         emoji: unified,
         user: userKey,
-      }),
+      })
     );
 
     chatSocketServer.send(
@@ -98,18 +91,18 @@ export function useChatActions({
           emoji: unified,
           user: userKey,
         }),
-      }),
+      })
     );
   };
 
-  const commonEmit = (payload, localData, clientId) => {
+  const commonEmit = (payload, localData) => {
     chatSocketServer.send(
       "SEND_CHAT",
       makeOutgoingPayload({
         type: activeChat.type,
         to: activeChat.name,
         mes: payload,
-      }),
+      })
     );
 
     const now = Date.now();
@@ -120,8 +113,7 @@ export function useChatActions({
         message: {
           ...localData,
           chatKey,
-          id: clientId,
-          clientId,
+          id: `local-${now}`,
           actionTime: now,
           time: formatVNDateTime(now),
           from: currentUser,
@@ -132,7 +124,7 @@ export function useChatActions({
             ? { reply: { preview: getMessagePreview(replyMsg) } }
             : null,
         },
-      }),
+      })
     );
 
     dispatch(
@@ -141,7 +133,7 @@ export function useChatActions({
         lastMessage: localData.text || `[${localData.type.toUpperCase()}]`,
         actionTime: now,
         type: activeChat.type,
-      }),
+      })
     );
 
     setReplyMsg(null);
@@ -174,12 +166,14 @@ export function useChatActions({
           messageId: msg.id,
           user: userKey,
         }),
-      }),
+      })
     );
   };
 
   const handleRecallMessage = (msg) => {
     if (!msg?.id || !activeChat || !currentUser) return;
+
+    if (typeof msg.id === "string" && msg.id.startsWith("local-")) return;
 
     const userKey = toUserKey(currentUser);
     if (!userKey) return;
@@ -196,7 +190,7 @@ export function useChatActions({
           messageId: msg.id,
           user: userKey,
         }),
-      }),
+      })
     );
   };
 
@@ -213,7 +207,7 @@ export function useChatActions({
         chatKey: targetChatKey,
         index: typeof restoreIndex === "number" ? restoreIndex : 0,
         message: msg,
-      }),
+      })
     );
 
     chatSocketServer.send(
@@ -226,7 +220,7 @@ export function useChatActions({
           messageId: msg.id,
           user: userKey,
         }),
-      }),
+      })
     );
   };
 
@@ -234,17 +228,10 @@ export function useChatActions({
     handleSend: (textValue) => {
       const text = (textValue || "").trim();
       if (!text || !activeChat) return;
-
-      const clientId = crypto.randomUUID();
-
-      const raw = hasEmoji(text) ? buildEmojiMessage(text) : text;
-      const mes = attachMetaAndClientId(raw, clientId);
-
-      commonEmit(
-        mes,
-        { text, type: hasEmoji(text) ? "emoji" : "text" },
-        clientId,
+      const mes = attachReplyMeta(
+        hasEmoji(text) ? buildEmojiMessage(text) : text
       );
+      commonEmit(mes, { text, type: hasEmoji(text) ? "emoji" : "text" });
     },
 
     handleFileUpload: async (file, currentInput) => {
@@ -259,23 +246,20 @@ export function useChatActions({
         else if (["mp4", "webm"].includes(ext)) type = "video";
         else if (["mp3", "wav", "ogg", "webm"].includes(ext)) type = "audio";
 
-        const clientId = crypto.randomUUID();
-
-        const payload = attachMetaAndClientId(
+        const payload = attachReplyMeta(
           JSON.stringify({
             customType: type,
             url,
             text: currentInput,
             fileName: file.name,
-          }),
-          clientId,
+          })
         );
-
-        commonEmit(
-          payload,
-          { text: currentInput, type, url, fileName: file.name },
-          clientId,
-        );
+        commonEmit(payload, {
+          text: currentInput,
+          type,
+          url,
+          fileName: file.name,
+        });
       } finally {
         setIsUploading(false);
       }
@@ -292,42 +276,13 @@ export function useChatActions({
         const url = await uploadFileToS3(audioFile);
         if (!url) return;
 
-        const clientId = crypto.randomUUID();
-        const payload = attachMetaAndClientId(
-          JSON.stringify({ customType: "audio", url, fileName }),
-          clientId,
+        const payload = attachReplyMeta(
+          JSON.stringify({ customType: "audio", url, fileName })
         );
-
-        commonEmit(payload, { type: "audio", url, fileName }, clientId);
+        commonEmit(payload, { type: "audio", url, fileName });
       } finally {
         setIsUploading(false);
       }
-    },
-
-    handleSendRichText: (editorRef) => {
-      const rich = extractRichText(editorRef);
-      if (!rich) return;
-
-      const clientId = crypto.randomUUID();
-      const payload = attachMetaAndClientId(
-        JSON.stringify({
-          customType: "richText",
-          text: rich.text,
-          blocks: rich.blocks,
-        }),
-        clientId,
-      );
-
-      commonEmit(
-        payload,
-        {
-          type: "richText",
-          text: rich.text,
-          blocks: rich.blocks,
-          sender: "user",
-        },
-        clientId,
-      );
     },
 
     handleConfirmForward: ({ selectedMap, note }) => {
@@ -350,7 +305,7 @@ export function useChatActions({
             type: type === "room" ? "room" : "people",
             to: name,
             mes: payloadText,
-          }),
+          })
         );
 
         const targetKey = type === "room" ? `group:${name}` : `user:${name}`;
@@ -375,7 +330,7 @@ export function useChatActions({
               url: parsed?.url || null,
               fileName: parsed?.fileName || null,
             },
-          }),
+          })
         );
 
         dispatch(
@@ -384,7 +339,7 @@ export function useChatActions({
             lastMessage: parsed?.text || "[Forward]",
             actionTime: now,
             type: type === "room" ? "room" : "people",
-          }),
+          })
         );
       });
       setShowForwardModal(false);
@@ -394,26 +349,18 @@ export function useChatActions({
 
     handleSendSticker: (sticker) => {
       if (!sticker?.url) return;
-      const clientId = crypto.randomUUID();
-
-      const payload = attachMetaAndClientId(
-        JSON.stringify({ customType: "sticker", url: sticker.url }),
-        clientId,
+      const payload = attachReplyMeta(
+        JSON.stringify({ customType: "sticker", url: sticker.url })
       );
-
-      commonEmit(payload, { type: "sticker", url: sticker.url }, clientId);
+      commonEmit(payload, { type: "sticker", url: sticker.url });
     },
 
     handleSendGif: (gif) => {
       if (!gif?.url) return;
-      const clientId = crypto.randomUUID();
-
-      const payload = attachMetaAndClientId(
-        JSON.stringify({ customType: "gif", url: gif.url }),
-        clientId,
+      const payload = attachReplyMeta(
+        JSON.stringify({ customType: "gif", url: gif.url })
       );
-
-      commonEmit(payload, { type: "gif", url: gif.url }, clientId);
+      commonEmit(payload, { type: "gif", url: gif.url });
     },
 
     handleSendRichText: (editorRef) => {
@@ -424,7 +371,7 @@ export function useChatActions({
           customType: "richText",
           text: rich.text,
           blocks: rich.blocks,
-        }),
+        })
       );
       commonEmit(payload, {
         type: "richText",

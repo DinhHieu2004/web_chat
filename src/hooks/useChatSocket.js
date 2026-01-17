@@ -38,7 +38,6 @@ export function useChatSocket(currentUser, callLogic) {
 
     const resolveMessageId = (obj, fallback) => {
       const candidates = [
-        obj?.clientId,
         obj?.id,
         obj?.messageId,
         obj?.msgId,
@@ -76,7 +75,7 @@ export function useChatSocket(currentUser, callLogic) {
 
       chatSocketServer.send(
         chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",
-        { name: chat.name, page },
+        { name: chat.name, page }
       );
     };
 
@@ -148,7 +147,7 @@ export function useChatSocket(currentUser, callLogic) {
               optionId,
               userId: voteUserId,
               action: voteAction,
-            }),
+            })
           );
         } else {
           console.error("Thiếu thông tin vote:", {
@@ -194,9 +193,7 @@ export function useChatSocket(currentUser, callLogic) {
       const isPoll = parsed?.customType === "poll";
       const isActiveChat = chatKey.split(":")[1] === activeChatId;
       const actionTime = resolveActionTime(d);
-      const msgId =
-        parsed?.clientId ??
-        resolveMessageId(d, actionTime || Date.now() + Math.random());
+      const msgId = resolveMessageId(d, actionTime);
       const chatName = chatKey.split(":")[1];
 
       let displayText = "";
@@ -261,7 +258,7 @@ export function useChatSocket(currentUser, callLogic) {
             duration: parsed?.duration || null,
             wasMissed: parsed?.wasMissed || false,
           },
-        }),
+        })
       );
 
       dispatch(
@@ -273,7 +270,7 @@ export function useChatSocket(currentUser, callLogic) {
           from: d.name,
           increaseUnread: !isActiveChat,
           noReorder: isActiveChat,
-        }),
+        })
       );
     };
 
@@ -292,15 +289,6 @@ export function useChatSocket(currentUser, callLogic) {
       const mapHistoryMessage = (m) => {
         const parsed = tryParseCustomPayload(m?.mes);
 
-        if (parsed?.customType === "recall") {
-          return {
-            id: parsed.messageId,
-            recalled: true,
-            text: "Tin nhắn đã được thu hồi",
-            sender: "system",
-          };
-        }
-
         if (
           parsed?.customType === "typing" ||
           parsed?.customType === "call_request" ||
@@ -318,7 +306,7 @@ export function useChatSocket(currentUser, callLogic) {
         const actionTime = resolveActionTime(m);
         const msgId = resolveMessageId(
           m,
-          actionTime || Date.now() + Math.random(),
+          actionTime || Date.now() + Math.random()
         );
 
         const isCallLog =
@@ -425,7 +413,7 @@ export function useChatSocket(currentUser, callLogic) {
         });
 
         const visibleMessages = baseMessages.filter(
-          (m) => !deletedSet.has(String(m.id)),
+          (m) => !deletedSet.has(String(m.id))
         );
 
         const page = payload?.page;
@@ -435,39 +423,17 @@ export function useChatSocket(currentUser, callLogic) {
             messages: visibleMessages,
             page,
             hasMore: Array.isArray(data) && data.length > 0,
-          }),
+          })
         );
 
         recallEvents.forEach((ev) => {
           if (!ev.messageId) return;
           dispatch(recallMessage({ chatKey: ck, id: ev.messageId }));
-
-          const recalledMessageIndex = baseMessages.findIndex(
-            (msg) => msg.id === ev.messageId,
-          );
-          if (recalledMessageIndex !== -1) {
-            const recalledMessage = { ...baseMessages[recalledMessageIndex] };
-            if (recalledMessage?.meta?.forward) {
-              recalledMessage.recalled = true;
-              recalledMessage.text = "Tin nhắn đã được thu hồi";
-            } else {
-              recalledMessage.recalled = true;
-              recalledMessage.text = "Tin nhắn đã được thu hồi";
-            }
-            baseMessages[recalledMessageIndex] = recalledMessage;
-          }
         });
 
         reactionEvents.forEach((ev) => {
           if (!ev.messageId || !ev.emoji || !ev.user) return;
-          dispatch(
-            toggleReaction({
-              chatKey: ck,
-              messageId: ev.messageId,
-              emoji: ev.emoji,
-              user: ev.user,
-            }),
-          );
+          dispatch(toggleReaction({ chatKey: ck, ...ev }));
         });
       }
 
@@ -525,7 +491,7 @@ export function useChatSocket(currentUser, callLogic) {
         });
 
         const visibleMessages = baseMessages.filter(
-          (m) => !deletedSet.has(String(m.id)),
+          (m) => !deletedSet.has(String(m.id))
         );
 
         const page = payload?.page;
@@ -535,7 +501,7 @@ export function useChatSocket(currentUser, callLogic) {
             messages: visibleMessages,
             page,
             hasMore: Array.isArray(data.chatData) && data.chatData.length > 0,
-          }),
+          })
         );
 
         recallEvents.forEach((ev) => {
@@ -566,7 +532,7 @@ export function useChatSocket(currentUser, callLogic) {
       if (!chat) return;
       chatSocketServer.send(
         chat.type === "room" ? "GET_ROOM_CHAT_MES" : "GET_PEOPLE_CHAT_MES",
-        { name: chat.name, page },
+        { name: chat.name, page }
       );
     },
   };

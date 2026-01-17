@@ -193,7 +193,7 @@ const listUserSlice = createSlice({
             })
             .addCase(chatFriend.fulfilled, (state, action) => {
                 state.loading = false;
-                const isExist = action.payload?.status === true
+                const isExist = action.payload?.data?.status;
 
                 if (!isExist) {
                     state.error = "User không tồn tại";
