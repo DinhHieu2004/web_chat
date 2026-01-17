@@ -67,7 +67,7 @@ export default function Sidebar({searchTerm, setSearchTerm, onSelectContact, tog
                         onClick={() => setActiveTab(tab.key)}
                         className={`flex-1 py-1.5 text-sm rounded-md
                 ${activeTab === tab.key
-                            ? "bg-white shadow text-purple-600 font-medium"
+                            ? "bg-white shadow text-blue-600 font-medium"
                             : "text-gray-500"}
             `}
                     >

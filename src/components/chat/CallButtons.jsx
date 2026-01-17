@@ -1,8 +1,9 @@
-import {FaPhone
+import {
+    FaPhone
 } from "react-icons/fa";
 
 
-export default function CallButtons({ onVoiceCall, onVideoCall }) {
+export default function CallButtons({ onVoiceCall }) {
     return (
         <div className="flex gap-2">
             <button
@@ -11,16 +12,9 @@ export default function CallButtons({ onVoiceCall, onVideoCall }) {
                 title="Voice Call"
             >
                 <FaPhone
- />
+                />
             </button>
 
-            <button
-                onClick={onVideoCall}
-                className="p-2 hover:bg-gray-100 rounded-full transition"
-                title="Video Call"
-            >
-                📹
-            </button>
         </div>
     );
 }

@@ -10,12 +10,12 @@ export default function ContactItem({contact, active, onClick}) {
             onClick={onClick}
             className={`px-4 py-3 flex items-center gap-3 cursor-pointer
         hover:bg-gray-50
-        ${active ? "bg-purple-50 border-l-4 border-purple-500" : ""}
+        ${active ? "bg-purple-50 border-l-4 border-blue-500" : ""}
       `}
         >
             <div className="relative">
                 <div
-                    className="w-10 h-10 bg-linear-to-br from-purple-400 to-blue-400
+                    className="w-10 h-10 bg-linear-to-br from-blue-400 to-blue-400
                      rounded-full flex items-center justify-center text-white"
                 >
                     {isRoom ? <FaUsers size={16}/> : <FaUser size={16}/>}
