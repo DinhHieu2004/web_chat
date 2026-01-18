@@ -378,12 +378,6 @@ export default function ForwardMessageModal({
                     <div className="bg-white border border-gray-200/60 rounded-md p-2 opacity-60">
                         <PreviewBlock preview={messagePreview} />
                     </div>
-                    <input
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                        placeholder="Nhập tin nhắn..."
-                        className="mt-2 w-full h-8 border border-gray-200/60 rounded-md px-3 text-sm outline-none"
-                    />
                 </div>
 
                 <div className="px-4 py-2 border-t border-gray-200/60 flex justify-end gap-2">

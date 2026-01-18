@@ -19,9 +19,11 @@ const createSocketPromise = (event, payload, errorEvent = "ERROR") => {
 
 export const getList = createAsyncThunk(
     "chat/getList",
-    async (_, {rejectWithValue}) => {
+    async (_, {getState, rejectWithValue}) => {
         try {
-            return await createSocketPromise("GET_USER_LIST", {});
+            const data = await createSocketPromise("GET_USER_LIST", {});
+            const currentUser = getState().auth?.user;
+            return { data, currentUser };
         } catch (err) {
             return rejectWithValue(err || "Get list failed");
         }
@@ -51,14 +53,19 @@ export const joinRoom = createAsyncThunk(
 );
 export const chatFriend = createAsyncThunk(
     "chat/chatFriend",
-    async ({user}, {rejectWithValue}) => {
+    async ({ user }, { getState, rejectWithValue }) => {
         try {
-            return await createSocketPromise("CHECK_USER_EXIST", {user});
+            const currentUser = getState().auth.user;
+            if (user === currentUser) {
+                return rejectWithValue("Không thể chat với chính mình");
+            }
+            return await createSocketPromise("CHECK_USER_EXIST", { user });
         } catch (err) {
             return rejectWithValue(err || "Not exist");
         }
     }
 );
+
 
 const listUserSlice = createSlice({
     name: "user",
@@ -138,13 +145,14 @@ const listUserSlice = createSlice({
             })
             .addCase(getList.fulfilled, (state, action) => {
                 state.loading = false;
-
-                const raw = Array.isArray(action.payload) ? action.payload : [];
-                state.list = raw.map((item) => ({
-                    ...item,
-                    type: item.type === 1 ? "room" : "people",
-                    online: !!item.online,
-                }));
+                const { data, currentUser } = action.payload;
+                state.list = (Array.isArray(data) ? data : [])
+                    .filter(item => item.name !== currentUser)
+                    .map(item => ({
+                        ...item,
+                        type: item.type === 1 ? "room" : "people",
+                        online: !!item.online,
+                    }));
             })
             .addCase(getList.rejected, (state, action) => {
                 state.loading = false;
@@ -193,15 +201,16 @@ const listUserSlice = createSlice({
             })
             .addCase(chatFriend.fulfilled, (state, action) => {
                 state.loading = false;
-                const isExist = action.payload?.data?.status;
+                const isExist = action.payload?.status;
+
+                const username =
+                    action.payload?.user ||
+                    action.meta?.arg?.user;
 
                 if (!isExist) {
                     state.error = "User không tồn tại";
                     return;
                 }
-                const username =
-                    action.payload?.user ||
-                    action.meta?.arg?.user;
                 const people = {
                     name: username,
                     type: "people",
