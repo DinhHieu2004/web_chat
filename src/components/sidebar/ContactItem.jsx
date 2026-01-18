@@ -32,7 +32,7 @@ export default function ContactItem({contact, active, onClick}) {
                 </h3>
 
                 {contact.lastMessage && (
-                    <p className={`text-sm truncate ${unread ? "font-bold text-gray-900" : "text-gray-500"}`}>
+                    <p className={`text-sm truncate ${unread ? "font-bold text-gray-800" : "text-gray-500"}`}>
                         {contact.type === "room" && contact.from ? `${contact.from}: ${contact.lastMessage}`
                             : contact.lastMessage}
                     </p>
