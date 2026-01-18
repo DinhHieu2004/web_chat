@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { getLocation } from '../services/locationService';
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { addMessage } from "../redux/slices/chatSlice";
 import { formatVNDateTime, makeOutgoingPayload } from "../utils/chatDataFormatter";
 import { chatSocketServer } from '../services/socket';
@@ -12,6 +12,7 @@ export function useShareLocation({
     currentUser,
 }) {
     const dispatch = useDispatch();
+    const username = useSelector((state) => state.auth.user);
 
     const sendLocation = useCallback(async () => {
         if (!activeChat || !chatKey) return;
@@ -23,7 +24,7 @@ export function useShareLocation({
 
             const now = Date.now();
 
-            const locationText = `Vị trí của: ${currentUser?.name || "người dùng"}`;
+            const locationText = `Vị trí của: ${username || "người dùng"}`;
 
             const payload = JSON.stringify({
                 customType: "location",
@@ -74,6 +75,6 @@ export function useShareLocation({
         } catch (err) {
             console.log("k gui dc", err);
         }
-    }, [activeChat, chatKey,currentUser, dispatch]);
+    }, [activeChat, chatKey,currentUser, dispatch, username]);
     return { sendLocation };
-};
+}
